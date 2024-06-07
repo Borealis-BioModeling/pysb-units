@@ -5,13 +5,13 @@ from . import unitdefs
 
 # Define __all__
 
-__all__ = ['Units', 'Model', 'Parameter', 'Initial', 'Rule']
+__all__ = ["Units", "Model", "Parameter", "Initial", "Rule"]
 
 # Enable the custom units if not already enabled.
 try:
     unitdefs.enable()
 except:
-    pass    
+    pass
 
 ## New Units class ##
 
@@ -28,12 +28,12 @@ class Units(pysb.Annotation):
         return
 
     # def _parse(self, unit_string):
-    #     # replace any ^-1 with 1 / 
+    #     # replace any ^-1 with 1 /
     #     # unit_string = unit_string.replace("^", "**")
     #     try:
     #         unit = u.Unit(unit_string)
     #     except UnknownUnitError as e:
-    #         raise e 
+    #         raise e
     #     parsed = unit.to_string()
 
     @property
@@ -43,7 +43,7 @@ class Units(pysb.Annotation):
     @property
     def unit(self):
         return self._unit
-    
+
     def __repr__(self):
         repr_string = super().__repr__()
         split = repr_string.split(",")
@@ -140,35 +140,53 @@ class Rule(pysb.Rule):
             elif reaction_order == 2:
                 return unitdefs.is_second_order_rate_constant(unit)
             else:
-                return False    
+                return False
 
-        # If the rule is reversible, check that both 
+        # If the rule is reversible, check that both
         # rate parameters have units.
         if self.is_reversible:
             if not (self.rate_forward.has_units and self.rate_reverse.has_units):
                 err = "Both rate parameters must have defined units in reversible Rule definitions:\n"
                 if self.rate_forward.has_units:
-                    err += "Forward rate parameter {} has units {}, but Reverse rate parameter {} lacks units.".format(self.rate_forward.name, self.rate_forward.units.value, self.rate_reverse.name)
+                    err += "Forward rate parameter {} has units {}, but Reverse rate parameter {} lacks units.".format(
+                        self.rate_forward.name,
+                        self.rate_forward.units.value,
+                        self.rate_reverse.name,
+                    )
 
                 else:
-                    err += "Reverse rate parameter {} has units {}, but Forward rate parameter {} lacks units.".format(self.rate_reverse.name, self.rate_reverse.units.value, self.rate_forward.name)
+                    err += "Reverse rate parameter {} has units {}, but Forward rate parameter {} lacks units.".format(
+                        self.rate_reverse.name,
+                        self.rate_reverse.units.value,
+                        self.rate_forward.name,
+                    )
                 raise MissingUnitError(err)
-            
+
         # Check the forward rate constant
         if self.rate_forward.has_units:
             reaction_order = len(self.reactant_pattern.complex_patterns)
             parameter = self.rate_forward
             if not check_order(reaction_order, parameter):
-                err = "Forward reaction with order {}"
-            
+                err = "The rate parameter {} with units {} for the forward reaction with order {} doesn't have the correct unit pattern for that reaction order.".format(
+                    parameter.name, parameter.units.value, reaction_order
+                )
+                raise WrongUnitError(err)
+        if (self.is_reversible) and (self.rate_reverse.has_units):
+            reaction_order = len(self.product_pattern.complex_patterns)
+            parameter = self.rate_reverse
+            if not check_order(reaction_order, parameter):
+                err = "The rate parameter {} with units {} for the reverse reaction with order {} doesn't have the correct unit pattern for that reaction order.".format(
+                    parameter.name, parameter.units.value, reaction_order
+                )
+                raise WrongUnitError(err)
+        return
 
-        #reaction_order = 
+        # reaction_order =
         return
 
 
-        
-
 # Utility functions:
+
 
 def add_units(model_cls):
     @property
@@ -219,16 +237,23 @@ def rule_orders():
         print(rule, rule.reactant_)
     return
 
+
 # Error Classes
+
 
 class UnknownUnitError(ValueError):
     """An unrecognized unit type was added to the model."""
+
     pass
+
 
 class MissingUnitError(ValueError):
     """A component is missing a needed unit."""
+
     pass
+
 
 class WrongUnitError(ValueError):
     """A component has the wrong units for its intended usage."""
+
     pass
