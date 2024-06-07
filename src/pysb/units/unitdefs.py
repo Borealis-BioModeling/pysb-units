@@ -96,20 +96,37 @@ def is_concentration(phys_type):
 def is_rate(phys_type):
     return (phys_type in rate_phys_types)
 
-def  is_zero_order_rate_constant(unit):
-    return is_concentration(unit.physical_type)
+def is_zero_order_rate_constant(unit):
+    return is_rate(unit.physical_type)
 
 def is_first_order_rate_constant(unit):
     return ("frequency" == unit.physical_type)
 
 # Still working on this one
-# def is_second_order_rate_constant(unit):
-#     bases = unit.bases
-#     powers = unit.powers
-#     phys_types = [base.physical_type for base in bases)]
-#     if "cell" in phys_types:
+def is_second_order_rate_constant(unit):
+    bases = unit.bases
+    powers = unit.powers
+    phys_types = [base.physical_type for base in bases]
+    time_idx = None
+    has_freq = False
+    for i in range(len(bases)):
+        if phys_types[i] == 'time':
+            time_idx = i
+            has_freq = ((bases[i]**powers[i]).physical_type == 'frequency')
 
-#     else:
+    other_unit = None
+    has_conc = False
+    # Use a loop here in case the concentration unit is given as a 
+    # a composite value like (mol / l)
+    for i in range(len(bases)):
+        if i != time_idx:
+            if other_unit is None:
+                other_unit = bases[i]**(-1 * powers[i])
+            else:
+                other_unit *= bases[i]**(-1 * powers[i])    
+    if other_unit is not None:
+        has_conc = is_concentration(other_unit.physical_type)
+    return (has_freq and has_conc)
 
  
 
