@@ -1,6 +1,17 @@
 from pysb.core import SelfExporter
 import pysb
 import astropy.units as u
+from . import unitdefs
+
+# Define __all__
+
+__all__ = ['Units', 'Model', 'Parameter', 'Initial', 'Rule']
+
+# Enable the custom units if not already enabled.
+try:
+    unitdefs.enable()
+except:
+    pass    
 
 ## New Units class ##
 
@@ -9,9 +20,9 @@ class Units(pysb.Annotation):
 
     def __init__(self, parameter, unit_string):
         self._unit_string = unit_string
-        self._unit = unit_string
+        self._unit = u.Unit(unit_string)
         self._param = parameter
-        super().__init__(parameter, self._unit, predicate="units")
+        super().__init__(parameter, self._unit_string, predicate="units")
         parameter.units = self
         parameter.has_units = True
         return
@@ -29,6 +40,10 @@ class Units(pysb.Annotation):
     def value(self):
         return self._unit_string
 
+    @property
+    def unit(self):
+        return self._unit
+    
     def __repr__(self):
         repr_string = super().__repr__()
         split = repr_string.split(",")
@@ -107,8 +122,53 @@ class Initial(pysb.Initial):
         return ret
 
 
-# Utility functions:
+class Rule(pysb.Rule):
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._validate_units()
+        return
+
+    def _validate_units(self):
+
+        def check_order(reaction_order, parameter):
+            unit = parameter.units.unit
+            if reaction_order == 0:
+                return unitdefs.is_zero_order_rate_constant(unit)
+            elif reaction_order == 1:
+                return unitdefs.is_first_order_rate_constant(unit)
+            elif reaction_order == 2:
+                return unitdefs.is_second_order_rate_constant(unit)
+            else:
+                return False    
+
+        # If the rule is reversible, check that both 
+        # rate parameters have units.
+        if self.is_reversible:
+            if not (self.rate_forward.has_units and self.rate_reverse.has_units):
+                err = "Both rate parameters must have defined units in reversible Rule definitions:\n"
+                if self.rate_forward.has_units:
+                    err += "Forward rate parameter {} has units {}, but Reverse rate parameter {} lacks units.".format(self.rate_forward.name, self.rate_forward.units.value, self.rate_reverse.name)
+
+                else:
+                    err += "Reverse rate parameter {} has units {}, but Forward rate parameter {} lacks units.".format(self.rate_reverse.name, self.rate_reverse.units.value, self.rate_forward.name)
+                raise MissingUnitError(err)
+            
+        # Check the forward rate constant
+        if self.rate_forward.has_units:
+            reaction_order = len(self.reactant_pattern.complex_patterns)
+            parameter = self.rate_forward
+            if not check_order(reaction_order, parameter):
+                err = "Forward reaction with order {}"
+            
+
+        #reaction_order = 
+        return
+
+
+        
+
+# Utility functions:
 
 def add_units(model_cls):
     @property
@@ -163,4 +223,12 @@ def rule_orders():
 
 class UnknownUnitError(ValueError):
     """An unrecognized unit type was added to the model."""
+    pass
+
+class MissingUnitError(ValueError):
+    """A component is missing a needed unit."""
+    pass
+
+class WrongUnitError(ValueError):
+    """A component has the wrong units for its intended usage."""
     pass
