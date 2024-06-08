@@ -1,7 +1,7 @@
 from pysb.core import SelfExporter
 import pysb
 import astropy.units as u
-from . import unitdefs
+import unitdefs
 
 # Define __all__
 
@@ -20,7 +20,11 @@ class Units(pysb.Annotation):
 
     def __init__(self, parameter, unit_string):
         self._unit_string = unit_string
-        self._unit = u.Unit(unit_string)
+        try:
+            self._unit = u.Unit(unit_string)
+            self._unit_string_parsed = self._unit.to_string()
+        except:
+            raise UnknownUnitError("Unrecognizable unit pattern \'{}\'".format(unit_string))
         self._param = parameter
         super().__init__(parameter, self._unit_string, predicate="units")
         parameter.units = self
@@ -124,10 +128,71 @@ class Initial(pysb.Initial):
 
 class Rule(pysb.Rule):
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self._validate_units()
-        return
+    # def __init__(self, *args, **kwargs):
+    #     super().__init__(*args, **kwargs)
+
+    #     self._validate_units()
+    #     return
+
+    def __init__(self, name, rule_expression, rate_forward, rate_reverse=None,
+                delete_molecules=False, move_connected=False, energy=False,
+                total_rate=False, _export=True):
+        if not isinstance(rule_expression, pysb.RuleExpression):
+            raise Exception("rule_expression is not a RuleExpression object")
+        pysb.validate_expr(rate_forward, "forward rate")
+        if rule_expression.is_reversible:
+            pysb.validate_expr(rate_reverse, "reverse rate")
+        elif rate_reverse:
+            raise ValueError('Reverse rate specified, but rule expression is '
+                             'not reversible. Use | instead of >>.')
+        self.rule_expression = rule_expression
+        self.reactant_pattern = rule_expression.reactant_pattern
+        self.product_pattern = rule_expression.product_pattern
+        self.is_reversible = rule_expression.is_reversible
+        self.rate_forward = rate_forward
+        self.rate_reverse = rate_reverse
+        self.delete_molecules = delete_molecules
+        self.move_connected = move_connected
+        self.energy = energy
+        self.total_rate = total_rate
+        # TODO: ensure all numbered sites are referenced exactly twice within each of reactants and products
+
+        # Check synthesis products are concrete
+        if self.is_synth():
+            rp = self.reactant_pattern if self.is_reversible else \
+                self.product_pattern
+            for cp in rp.complex_patterns:
+                if not cp.is_concrete():
+                    raise ValueError('Product {} of synthesis rule {} is not '
+                                     'concrete'.format(cp, name))
+
+        # Check the units of rate parameters
+        self._validate_units()        
+
+        pysb.Component.__init__(self, name, _export)
+
+        # Get tags from rule expression
+        tags = set()
+        for rxn_pat in (rule_expression.reactant_pattern,
+                        rule_expression.product_pattern):
+            if rxn_pat.complex_patterns:
+                for cp in rxn_pat.complex_patterns:
+                    if cp is not None:
+                        if cp._tag:
+                            tags.add(cp._tag)
+                        tags.update(mp._tag for mp in cp.monomer_patterns
+                                    if mp._tag is not None)
+
+        # Check that tags defined in rates are used in the expression
+        tags_rates = (self._check_rate_tags('forward', tags) +
+                      self._check_rate_tags('reverse', tags))
+
+        missing = tags.difference(set(tags_rates))
+        if missing:
+            names = [t.name for t in missing]
+            warnings.warn(
+                'Rule "{}": Tags {} defined in rule expression but not used in '
+                'rates'.format(self.name, ', '.join(names)), UserWarning)
 
     def _validate_units(self):
 
@@ -148,14 +213,14 @@ class Rule(pysb.Rule):
             if not (self.rate_forward.has_units and self.rate_reverse.has_units):
                 err = "Both rate parameters must have defined units in reversible Rule definitions:\n"
                 if self.rate_forward.has_units:
-                    err += "Forward rate parameter {} has units {}, but Reverse rate parameter {} lacks units.".format(
+                    err += "Forward rate parameter \'{}\' has units \'{}\', but Reverse rate parameter \'{}\' lacks units.".format(
                         self.rate_forward.name,
                         self.rate_forward.units.value,
                         self.rate_reverse.name,
                     )
 
                 else:
-                    err += "Reverse rate parameter {} has units {}, but Forward rate parameter {} lacks units.".format(
+                    err += "Reverse rate parameter \'{}\' has units \'{}\', but Forward rate parameter \'{}\' lacks units.".format(
                         self.rate_reverse.name,
                         self.rate_reverse.units.value,
                         self.rate_forward.name,
@@ -167,7 +232,7 @@ class Rule(pysb.Rule):
             reaction_order = len(self.reactant_pattern.complex_patterns)
             parameter = self.rate_forward
             if not check_order(reaction_order, parameter):
-                err = "The rate parameter {} with units {} for the forward reaction with order {} doesn't have the correct unit pattern for that reaction order.".format(
+                err = "The rate parameter \'{}\' with units \'{}\' for the forward reaction with order {} doesn't have the correct unit pattern for that reaction order.".format(
                     parameter.name, parameter.units.value, reaction_order
                 )
                 raise WrongUnitError(err)
@@ -175,7 +240,7 @@ class Rule(pysb.Rule):
             reaction_order = len(self.product_pattern.complex_patterns)
             parameter = self.rate_reverse
             if not check_order(reaction_order, parameter):
-                err = "The rate parameter {} with units {} for the reverse reaction with order {} doesn't have the correct unit pattern for that reaction order.".format(
+                err = "The rate parameter \'{}\' with units \'{}\' for the reverse reaction with order {} doesn't have the correct unit pattern for that reaction order.".format(
                     parameter.name, parameter.units.value, reaction_order
                 )
                 raise WrongUnitError(err)
