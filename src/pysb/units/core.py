@@ -24,7 +24,9 @@ class Units(pysb.Annotation):
             self._unit = u.Unit(unit_string)
             self._unit_string_parsed = self._unit.to_string()
         except:
-            raise UnknownUnitError("Unrecognizable unit pattern \'{}\'".format(unit_string))
+            raise UnknownUnitError(
+                "Unrecognizable unit pattern '{}'".format(unit_string)
+            )
         self._param = parameter
         super().__init__(parameter, self._unit_string, predicate="units")
         parameter.units = self
@@ -111,6 +113,17 @@ class Parameter(pysb.Parameter):
 class Initial(pysb.Initial):
 
     def __init__(self, pattern, value, fixed=False, _export=True):
+        if isinstance(value, Parameter):
+            if value.has_units:
+                is_conc_unit = unitdefs.is_concentration(value.units.unit)
+                if not is_conc_unit:
+                    msg = "Parameter '{}' with units '{}' passed to Initial doesn't have a recognized concentration unit pattern.".format(
+                        value.name,
+                        value.units.value,
+                    )
+                    unit_strings = [uni.to_string() for uni in unitdefs.concentration_units]
+                    msg += "\n Recognized concentration unit patterns include: \n {}".format(unit_strings)
+                    raise WrongUnitError(msg)
         super().__init__(pattern, value, fixed, _export)
         self.units = None
         self.has_units = False
@@ -134,17 +147,28 @@ class Rule(pysb.Rule):
     #     self._validate_units()
     #     return
 
-    def __init__(self, name, rule_expression, rate_forward, rate_reverse=None,
-                delete_molecules=False, move_connected=False, energy=False,
-                total_rate=False, _export=True):
+    def __init__(
+        self,
+        name,
+        rule_expression,
+        rate_forward,
+        rate_reverse=None,
+        delete_molecules=False,
+        move_connected=False,
+        energy=False,
+        total_rate=False,
+        _export=True,
+    ):
         if not isinstance(rule_expression, pysb.RuleExpression):
             raise Exception("rule_expression is not a RuleExpression object")
         pysb.validate_expr(rate_forward, "forward rate")
         if rule_expression.is_reversible:
             pysb.validate_expr(rate_reverse, "reverse rate")
         elif rate_reverse:
-            raise ValueError('Reverse rate specified, but rule expression is '
-                             'not reversible. Use | instead of >>.')
+            raise ValueError(
+                "Reverse rate specified, but rule expression is "
+                "not reversible. Use | instead of >>."
+            )
         self.rule_expression = rule_expression
         self.reactant_pattern = rule_expression.reactant_pattern
         self.product_pattern = rule_expression.product_pattern
@@ -159,40 +183,47 @@ class Rule(pysb.Rule):
 
         # Check synthesis products are concrete
         if self.is_synth():
-            rp = self.reactant_pattern if self.is_reversible else \
-                self.product_pattern
+            rp = self.reactant_pattern if self.is_reversible else self.product_pattern
             for cp in rp.complex_patterns:
                 if not cp.is_concrete():
-                    raise ValueError('Product {} of synthesis rule {} is not '
-                                     'concrete'.format(cp, name))
+                    raise ValueError(
+                        "Product {} of synthesis rule {} is not "
+                        "concrete".format(cp, name)
+                    )
 
         # Check the units of rate parameters
-        self._validate_units()        
+        self._validate_units()
 
         pysb.Component.__init__(self, name, _export)
 
         # Get tags from rule expression
         tags = set()
-        for rxn_pat in (rule_expression.reactant_pattern,
-                        rule_expression.product_pattern):
+        for rxn_pat in (
+            rule_expression.reactant_pattern,
+            rule_expression.product_pattern,
+        ):
             if rxn_pat.complex_patterns:
                 for cp in rxn_pat.complex_patterns:
                     if cp is not None:
                         if cp._tag:
                             tags.add(cp._tag)
-                        tags.update(mp._tag for mp in cp.monomer_patterns
-                                    if mp._tag is not None)
+                        tags.update(
+                            mp._tag for mp in cp.monomer_patterns if mp._tag is not None
+                        )
 
         # Check that tags defined in rates are used in the expression
-        tags_rates = (self._check_rate_tags('forward', tags) +
-                      self._check_rate_tags('reverse', tags))
+        tags_rates = self._check_rate_tags("forward", tags) + self._check_rate_tags(
+            "reverse", tags
+        )
 
         missing = tags.difference(set(tags_rates))
         if missing:
             names = [t.name for t in missing]
             warnings.warn(
                 'Rule "{}": Tags {} defined in rule expression but not used in '
-                'rates'.format(self.name, ', '.join(names)), UserWarning)
+                "rates".format(self.name, ", ".join(names)),
+                UserWarning,
+            )
 
     def _validate_units(self):
 
@@ -213,14 +244,14 @@ class Rule(pysb.Rule):
             if not (self.rate_forward.has_units and self.rate_reverse.has_units):
                 err = "Both rate parameters must have defined units in reversible Rule definitions:\n"
                 if self.rate_forward.has_units:
-                    err += "Forward rate parameter \'{}\' has units \'{}\', but Reverse rate parameter \'{}\' lacks units.".format(
+                    err += "Forward rate parameter '{}' has units '{}', but Reverse rate parameter '{}' lacks units.".format(
                         self.rate_forward.name,
                         self.rate_forward.units.value,
                         self.rate_reverse.name,
                     )
 
                 else:
-                    err += "Reverse rate parameter \'{}\' has units \'{}\', but Forward rate parameter \'{}\' lacks units.".format(
+                    err += "Reverse rate parameter '{}' has units '{}', but Forward rate parameter '{}' lacks units.".format(
                         self.rate_reverse.name,
                         self.rate_reverse.units.value,
                         self.rate_forward.name,
@@ -232,7 +263,7 @@ class Rule(pysb.Rule):
             reaction_order = len(self.reactant_pattern.complex_patterns)
             parameter = self.rate_forward
             if not check_order(reaction_order, parameter):
-                err = "The rate parameter \'{}\' with units \'{}\' for the forward reaction with order {} doesn't have the correct unit pattern for that reaction order.".format(
+                err = "The rate parameter '{}' with units '{}' for the forward reaction with order {} doesn't have the correct unit pattern for that reaction order.".format(
                     parameter.name, parameter.units.value, reaction_order
                 )
                 raise WrongUnitError(err)
@@ -240,7 +271,7 @@ class Rule(pysb.Rule):
             reaction_order = len(self.product_pattern.complex_patterns)
             parameter = self.rate_reverse
             if not check_order(reaction_order, parameter):
-                err = "The rate parameter \'{}\' with units \'{}\' for the reverse reaction with order {} doesn't have the correct unit pattern for that reaction order.".format(
+                err = "The rate parameter '{}' with units '{}' for the reverse reaction with order {} doesn't have the correct unit pattern for that reaction order.".format(
                     parameter.name, parameter.units.value, reaction_order
                 )
                 raise WrongUnitError(err)
