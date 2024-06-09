@@ -18,7 +18,7 @@ except:
 
 class Units(pysb.Annotation):
 
-    def __init__(self, parameter, unit_string):
+    def __init__(self, parameter, unit_string, convert=None):
         self._unit_string = unit_string
         try:
             self._unit = u.Unit(unit_string)
@@ -27,6 +27,22 @@ class Units(pysb.Annotation):
             raise UnknownUnitError(
                 "Unrecognizable unit pattern '{}'".format(unit_string)
             )
+        if convert is not None:
+            try:
+                unit_orig = self._unit
+                try:
+                    unit_new = u.Unit(convert)
+                except:
+                    raise UnknownUnitError(
+                        "Unrecognizable unit pattern '{}' for convert.".format(convert)
+                    )
+                conversion_factor = unit_orig.to(unit_new)
+                parameter.value *= conversion_factor
+                self._unit = unit_new
+                self._unit_string = convert
+                self._unit_string_parsed = unit_new.to_string()
+            except:
+                raise ValueError("Unable to convert units {} to {}".format(unit_string, convert))    
         self._param = parameter
         super().__init__(parameter, self._unit_string, predicate="units")
         parameter.units = self
