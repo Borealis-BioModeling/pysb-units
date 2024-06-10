@@ -1,3 +1,4 @@
+import sympy
 from pysb.core import SelfExporter
 import pysb
 import astropy.units as u
@@ -15,10 +16,29 @@ except:
 
 ## New Unit class ##
 
+# class BaseUnit(metaclass=u.Unit):
+
+#     def __init__(self, unit_string):
+#         try:
+#             super().__init__(unit_string)
+#         except:
+#             raise UnknownUnitError(
+#                 "Unrecognizable unit pattern '{}'".format(unit_string)
+#             ) 
+#         return                 
+
+# class UnitBase(BaseUnit, pysb.Symbol):
+#     pass
 
 class Unit(pysb.Annotation):
 
+    # def __new__(cls, parameter, unit_string, convert=False):
+    #     name = "new_unit"
+    #     return super(Unit, cls).__new__(cls, name)
+
     def __init__(self, parameter, unit_string, convert=None):
+        if not isinstance(parameter, Parameter):
+            raise ValueError("Unit can only be assigned to Parameter component.")
         self._unit_string = unit_string
         try:
             self._unit = u.Unit(unit_string)
@@ -45,6 +65,7 @@ class Unit(pysb.Annotation):
                 raise ValueError("Unable to convert units {} to {}".format(unit_string, convert))    
         self._param = parameter
         super().__init__(parameter, self._unit_string, predicate="units")
+        self.name = "unit_" + parameter.name
         parameter.units = self
         parameter.has_units = True
         return
@@ -70,6 +91,13 @@ class Unit(pysb.Annotation):
         repr_string = super().__repr__()
         split = repr_string.split(",")
         return "%s, %s)" % (split[0], split[1])
+    
+    @property
+    def expr(self):
+        unit_bases = self.unit.bases
+        unit_powers = self.unit.powers
+        unit_symbols = [sympy.Symbol(base.to_string()) for base in unit_bases]
+        return sympy.Mul(*[a ** b for a,b in zip(unit_symbols, unit_powers)])
 
 
 ## Drop-ins for model components with added units features. ##
@@ -125,6 +153,9 @@ class Parameter(pysb.Parameter):
         else:
             return super().__repr__()
 
+    @property
+    def unit(self):
+        return self.units.unit
 
 class Initial(pysb.Initial):
 
