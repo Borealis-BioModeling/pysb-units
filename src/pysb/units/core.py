@@ -6,7 +6,7 @@ import unitdefs
 
 # Define __all__
 
-__all__ = ["Unit", "Model", "Parameter", "Initial", "Rule"]
+__all__ = ["Unit", "Model", "Parameter", "Expression", "Initial", "Rule"]
 
 # Enable the custom units if not already enabled.
 try:
@@ -70,15 +70,6 @@ class Unit(pysb.Annotation):
         parameter.has_units = True
         return
 
-    # def _parse(self, unit_string):
-    #     # replace any ^-1 with 1 /
-    #     # unit_string = unit_string.replace("^", "**")
-    #     try:
-    #         unit = u.Unit(unit_string)
-    #     except UnknownUnitError as e:
-    #         raise e
-    #     parsed = unit.to_string()
-
     @property
     def value(self):
         return self._unit_string
@@ -99,6 +90,27 @@ class Unit(pysb.Annotation):
         unit_symbols = [sympy.Symbol(base.to_string()) for base in unit_bases]
         return sympy.Mul(*[a ** b for a,b in zip(unit_symbols, unit_powers)])
 
+
+class ExpressionUnit(Unit):
+
+    def __init__(self, expression, unit_string):
+        if not isinstance(expression, Expression):
+            raise ValueError("ExpressionUnit can only be assigned to Expression component.")
+        self._unit_string = unit_string
+        try:
+            self._unit = u.Unit(unit_string)
+            self._unit_string_parsed = self._unit.to_string()
+        except:
+            raise UnknownUnitError(
+                "Unrecognizable unit pattern '{}'".format(unit_string)
+            )
+
+        self._expr = expression
+        super(Unit, self).__init__(expression, self._unit_string, predicate="units")
+        self.name = "unit_" + expression.name
+        expression.units = self
+        expression.has_units = True
+        return
 
 ## Drop-ins for model components with added units features. ##
 
@@ -157,10 +169,36 @@ class Parameter(pysb.Parameter):
     def unit(self):
         return self.units.unit
 
+class Expression(pysb.Expression):
+
+    def __init__(self, name, expr, _export=True):
+        unit_string = self._compose_units(expr)
+        super().__init__(name, expr, _export=_export)
+        self.units = None
+        self.has_units = False
+        expr_unit = ExpressionUnit(self, unit_string)
+        
+        return
+    
+    @staticmethod
+    def _compose_units(expr):
+        """Return expr rewritten in terms of terminal symbols only."""
+        subs = []
+        for a in expr.atoms():
+            if isinstance(a, Expression):
+                if a.has_units:
+                    subs.append((a, a.units.expr))
+            elif isinstance(a, Parameter):
+                if a.has_units:
+                    subs.append((a, a.units.expr))
+        unit_string = repr(expr.subs(subs))            
+        
+        return unit_string  
+
 class Initial(pysb.Initial):
 
     def __init__(self, pattern, value, fixed=False, _export=True):
-        if isinstance(value, Parameter):
+        if isinstance(value, (Parameter, Expression)):
             if value.has_units:
                 is_conc_unit = unitdefs.is_concentration(value.units.unit)
                 if not is_conc_unit:
