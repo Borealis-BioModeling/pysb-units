@@ -93,7 +93,7 @@ class Unit(pysb.Annotation):
 
 class ExpressionUnit(Unit):
 
-    def __init__(self, expression, unit_string):
+    def __init__(self, expression, unit_string, obs_pattern=None):
         if not isinstance(expression, Expression):
             raise ValueError("ExpressionUnit can only be assigned to Expression component.")
         self._unit_string = unit_string
@@ -104,7 +104,10 @@ class ExpressionUnit(Unit):
             raise UnknownUnitError(
                 "Unrecognizable unit pattern '{}'".format(unit_string)
             )
-
+        if obs_pattern is not None:
+            unit_obs = u.def_unit("unit({})".format(obs_pattern))
+            self._unit *= unit_obs
+            self._unit_string = self._unit.to_string()
         self._expr = expression
         super(Unit, self).__init__(expression, self._unit_string, predicate="units")
         self.name = "unit_" + expression.name
@@ -112,6 +115,41 @@ class ExpressionUnit(Unit):
         expression.has_units = True
         return
 
+class ObservableUnit(Unit):
+
+    def __init__(self, observable, unit_string, convert=None):
+        if not isinstance(observable, Observable):
+            raise ValueError("ObservableUnit can only be assigned to Observable component.")
+        self._unit_string = unit_string
+        try:
+            self._unit = u.Unit(unit_string)
+            self._unit_string_parsed = self._unit.to_string()
+        except:
+            raise UnknownUnitError(
+                "Unrecognizable unit pattern '{}'".format(unit_string)
+            )
+        if convert is not None:
+            try:
+                unit_orig = self._unit
+                try:
+                    unit_new = u.Unit(convert)
+                except:
+                    raise UnknownUnitError(
+                        "Unrecognizable unit pattern '{}' for convert.".format(convert)
+                    )
+                self.conversion_factor = unit_orig.to(unit_new)
+                self._unit = unit_new
+                self._unit_string = convert
+                self._unit_string_parsed = unit_new.to_string()
+            except:
+                raise ValueError("Unable to convert units {} to {}".format(unit_string, convert)) 
+        self._obs = observable
+        super(Unit, self).__init__(observable, self._unit_string, predicate="units")
+        self.name = "unit_" + observable.name
+        observable.units = self
+        observable.has_units = True
+        return
+    
 ## Drop-ins for model components with added units features. ##
 
 
@@ -156,7 +194,7 @@ class Parameter(pysb.Parameter):
 
     def __repr__(self):
         if self.has_units:
-            return "%s(%s, %s), unit=%s" % (
+            return "%s(%s, %s), unit=[%s]" % (
                 self.__class__.__name__,
                 repr(self.name),
                 repr(self.value),
@@ -172,28 +210,53 @@ class Parameter(pysb.Parameter):
 class Expression(pysb.Expression):
 
     def __init__(self, name, expr, _export=True):
-        unit_string = self._compose_units(expr)
+        unit_string, obs_pattern = self._compose_units(expr)
+        #print(unit_string, obs_string)
         super().__init__(name, expr, _export=_export)
         self.units = None
         self.has_units = False
-        expr_unit = ExpressionUnit(self, unit_string)
-        
+        expr_unit = ExpressionUnit(self, unit_string, obs_pattern=obs_pattern)
         return
-    
+
+    def __repr__(self):
+        base_repr = super().__repr__()  
+        if self.has_units:
+            unit_repr =  base_repr + ", unit=[{}]".format(self.units.value)
+            # if self.obs_pattern is not None:
+            #     unit_repr = base_repr + ", unit=[{}".format(self.units.value)+ " * unit({})]".format(self.obs_pattern)
+            return unit_repr    
+        else:
+            return base_repr
+        
     @staticmethod
     def _compose_units(expr):
         """Return expr rewritten in terms of terminal symbols only."""
         subs = []
+        subs_uni = []
+        subs_obs = []
         for a in expr.atoms():
             if isinstance(a, Expression):
                 if a.has_units:
                     subs.append((a, a.units.expr))
+                    subs_uni.append((a, 1))
             elif isinstance(a, Parameter):
                 if a.has_units:
                     subs.append((a, a.units.expr))
-        unit_string = repr(expr.subs(subs))            
-        
-        return unit_string  
+                    subs_uni.append((a, 1))
+            elif isinstance(a, pysb.Observable):
+                subs_obs.append([a, 1])
+        unit_obs_expr = expr.subs(subs)
+        unit_expr = unit_obs_expr.subs(subs_obs)
+        obs_expr = expr.subs(subs_uni)                
+        unit_string = repr(unit_expr)
+        if len(subs_obs) > 0:
+            if isinstance(obs_expr, pysb.Observable):
+                obs_string = repr(obs_expr.name)            
+            else:
+                obs_string = repr(obs_expr)
+        else:
+            obs_string = None        
+        return unit_string, obs_string  
 
 class Initial(pysb.Initial):
 
@@ -220,7 +283,7 @@ class Initial(pysb.Initial):
     def __repr__(self):
         ret = super().__repr__()
         if self.has_units:
-            ret += ", unit=" + self.units.value
+            ret += ", unit=[" + self.units.value + "]"
         return ret
 
 
@@ -264,8 +327,6 @@ class Rule(pysb.Rule):
         self.move_connected = move_connected
         self.energy = energy
         self.total_rate = total_rate
-        # TODO: ensure all numbered sites are referenced exactly twice within each of reactants and products
-
         # Check synthesis products are concrete
         if self.is_synth():
             rp = self.reactant_pattern if self.is_reversible else self.product_pattern
