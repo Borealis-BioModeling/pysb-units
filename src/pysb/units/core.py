@@ -6,7 +6,20 @@ import unitdefs
 
 # Define __all__
 
-__all__ = ["Unit", "Model", "Parameter", "Expression", "Initial", "Rule"]
+__all__ = [
+    "Unit",
+    "Model",
+    "Parameter",
+    "Expression",
+    "Initial",
+    "Rule",
+    "Observable",
+    "Monomer",
+    "Compartment",
+    "ANY",
+    "WILD",
+    "Annotation",
+]
 
 # Enable the custom units if not already enabled.
 try:
@@ -24,13 +37,14 @@ except:
 #         except:
 #             raise UnknownUnitError(
 #                 "Unrecognizable unit pattern '{}'".format(unit_string)
-#             ) 
-#         return                 
+#             )
+#         return
 
 # class UnitBase(BaseUnit, pysb.Symbol):
 #     pass
 
-class Unit(pysb.Annotation):
+
+class ParameterUnit(pysb.Annotation):
 
     # def __new__(cls, parameter, unit_string, convert=False):
     #     name = "new_unit"
@@ -38,7 +52,9 @@ class Unit(pysb.Annotation):
 
     def __init__(self, parameter, unit_string, convert=None):
         if not isinstance(parameter, Parameter):
-            raise ValueError("Unit can only be assigned to Parameter component.")
+            raise ValueError(
+                "ParameterUnit can only be assigned to Parameter component."
+            )
         self._unit_string = unit_string
         try:
             self._unit = u.Unit(unit_string)
@@ -62,7 +78,9 @@ class Unit(pysb.Annotation):
                 self._unit_string = convert
                 self._unit_string_parsed = unit_new.to_string()
             except:
-                raise ValueError("Unable to convert units {} to {}".format(unit_string, convert))    
+                raise ValueError(
+                    "Unable to convert units {} to {}".format(unit_string, convert)
+                )
         self._param = parameter
         super().__init__(parameter, self._unit_string, predicate="units")
         self.name = "unit_" + parameter.name
@@ -82,20 +100,22 @@ class Unit(pysb.Annotation):
         repr_string = super().__repr__()
         split = repr_string.split(",")
         return "%s, %s)" % (split[0], split[1])
-    
+
     @property
     def expr(self):
         unit_bases = self.unit.bases
         unit_powers = self.unit.powers
         unit_symbols = [sympy.Symbol(base.to_string()) for base in unit_bases]
-        return sympy.Mul(*[a ** b for a,b in zip(unit_symbols, unit_powers)])
+        return sympy.Mul(*[a**b for a, b in zip(unit_symbols, unit_powers)])
 
 
-class ExpressionUnit(Unit):
+class ExpressionUnit(ParameterUnit):
 
     def __init__(self, expression, unit_string, obs_pattern=None):
         if not isinstance(expression, Expression):
-            raise ValueError("ExpressionUnit can only be assigned to Expression component.")
+            raise ValueError(
+                "ExpressionUnit can only be assigned to Expression component."
+            )
         self._unit_string = unit_string
         try:
             self._unit = u.Unit(unit_string)
@@ -109,17 +129,22 @@ class ExpressionUnit(Unit):
             self._unit *= unit_obs
             self._unit_string = self._unit.to_string()
         self._expr = expression
-        super(Unit, self).__init__(expression, self._unit_string, predicate="units")
+        super(ParameterUnit, self).__init__(
+            expression, self._unit_string, predicate="units"
+        )
         self.name = "unit_" + expression.name
         expression.units = self
         expression.has_units = True
         return
 
-class ObservableUnit(Unit):
+
+class ObservableUnit(ParameterUnit):
 
     def __init__(self, observable, unit_string, convert=None):
         if not isinstance(observable, Observable):
-            raise ValueError("ObservableUnit can only be assigned to Observable component.")
+            raise ValueError(
+                "ObservableUnit can only be assigned to Observable component."
+            )
         self._unit_string = unit_string
         try:
             self._unit = u.Unit(unit_string)
@@ -142,14 +167,46 @@ class ObservableUnit(Unit):
                 self._unit_string = convert
                 self._unit_string_parsed = unit_new.to_string()
             except:
-                raise ValueError("Unable to convert units {} to {}".format(unit_string, convert)) 
+                raise ValueError(
+                    "Unable to convert units {} to {}".format(unit_string, convert)
+                )
+            is_conc_unit = unitdefs.is_concentration(self._unit)
+            if not is_conc_unit:
+                msg = "Observable {} must be assigned a concentration or amount unit pattern. Unit pattern {} isn't a recognized concentration or amount pattern.".format(
+                    observable.name,
+                    self._unit_string,
+                )
+                raise WrongUnitError(msg)
         self._obs = observable
-        super(Unit, self).__init__(observable, self._unit_string, predicate="units")
+        super(ParameterUnit, self).__init__(
+            observable, self._unit_string, predicate="units"
+        )
         self.name = "unit_" + observable.name
         observable.units = self
         observable.has_units = True
         return
-    
+
+
+class Unit(ExpressionUnit, ObservableUnit, ParameterUnit):
+
+    def __init__(self, component, unit_string, convert=None, obs_pattern=None):
+        if isinstance(component, Parameter):
+            ParameterUnit.__init__(self, component, unit_string, convert=convert)
+        elif isinstance(component, Expression):
+            ExpressionUnit.__init__(
+                self, component, unit_string, obs_pattern=obs_pattern
+            )
+        elif isinstance(component, Observable):
+            ObservableUnit.__init__(self, component, unit_string, convert=convert)
+        else:
+            raise ValueError(
+                "Unit can't be assigned to component type {}".format(
+                    repr(type(component))
+                )
+            )
+        return
+
+
 ## Drop-ins for model components with added units features. ##
 
 
@@ -207,27 +264,28 @@ class Parameter(pysb.Parameter):
     def unit(self):
         return self.units.unit
 
+
 class Expression(pysb.Expression):
 
     def __init__(self, name, expr, _export=True):
         unit_string, obs_pattern = self._compose_units(expr)
-        #print(unit_string, obs_string)
+        # print(unit_string, obs_string)
         super().__init__(name, expr, _export=_export)
         self.units = None
         self.has_units = False
-        expr_unit = ExpressionUnit(self, unit_string, obs_pattern=obs_pattern)
+        expr_unit = Unit(self, unit_string, obs_pattern=obs_pattern)
         return
 
     def __repr__(self):
-        base_repr = super().__repr__()  
+        base_repr = super().__repr__()
         if self.has_units:
-            unit_repr =  base_repr + ", unit=[{}]".format(self.units.value)
+            unit_repr = base_repr + ", unit=[{}]".format(self.units.value)
             # if self.obs_pattern is not None:
             #     unit_repr = base_repr + ", unit=[{}".format(self.units.value)+ " * unit({})]".format(self.obs_pattern)
-            return unit_repr    
+            return unit_repr
         else:
             return base_repr
-        
+
     @staticmethod
     def _compose_units(expr):
         """Return expr rewritten in terms of terminal symbols only."""
@@ -244,19 +302,32 @@ class Expression(pysb.Expression):
                     subs.append((a, a.units.expr))
                     subs_uni.append((a, 1))
             elif isinstance(a, pysb.Observable):
-                subs_obs.append([a, 1])
+                if a.has_units:
+                    subs.append((a, a.units.expr))
+                    subs_uni.append((a, 1))
+                else:
+                    subs_obs.append([a, 1])
         unit_obs_expr = expr.subs(subs)
         unit_expr = unit_obs_expr.subs(subs_obs)
-        obs_expr = expr.subs(subs_uni)                
+        obs_expr = expr.subs(subs_uni)
         unit_string = repr(unit_expr)
         if len(subs_obs) > 0:
             if isinstance(obs_expr, pysb.Observable):
-                obs_string = repr(obs_expr.name)            
+                obs_string = repr(obs_expr.name)
             else:
                 obs_string = repr(obs_expr)
         else:
-            obs_string = None        
-        return unit_string, obs_string  
+            obs_string = None
+        return unit_string, obs_string
+
+
+class Observable(pysb.Observable):
+
+    def __init__(self, *args, **kwargs):
+        self.units = None
+        self.has_units = False
+        super().__init__(*args, **kwargs)
+
 
 class Initial(pysb.Initial):
 
@@ -265,12 +336,16 @@ class Initial(pysb.Initial):
             if value.has_units:
                 is_conc_unit = unitdefs.is_concentration(value.units.unit)
                 if not is_conc_unit:
-                    msg = "Parameter '{}' with units '{}' passed to Initial doesn't have a recognized concentration unit pattern.".format(
+                    msg = "Parameter or Expression '{}' with units '{}' passed to Initial doesn't have a recognized concentration unit pattern.".format(
                         value.name,
                         value.units.value,
                     )
-                    unit_strings = [uni.to_string() for uni in unitdefs.concentration_units]
-                    msg += "\n Recognized concentration unit patterns include: \n {}".format(unit_strings)
+                    unit_strings = [
+                        uni.to_string() for uni in unitdefs.concentration_units
+                    ]
+                    msg += "\n Recognized concentration unit patterns include: \n {}".format(
+                        unit_strings
+                    )
                     raise WrongUnitError(msg)
         super().__init__(pattern, value, fixed, _export)
         self.units = None
@@ -338,7 +413,8 @@ class Rule(pysb.Rule):
                     )
 
         # Check the units of rate parameters
-        self._validate_units()
+        if not self.energy:
+            self._validate_units()
 
         pysb.Component.__init__(self, name, _export)
 
@@ -426,6 +502,13 @@ class Rule(pysb.Rule):
         # reaction_order =
         return
 
+
+## Alias the model components that don't have any changes - just for convenience
+Monomer = pysb.Monomer
+Compartment = pysb.Compartment
+ANY = pysb.ANY
+WILD = pysb.WILD
+Annotation = pysb.Annotation
 
 # Utility functions:
 
