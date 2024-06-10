@@ -5,7 +5,7 @@ import unitdefs
 
 # Define __all__
 
-__all__ = ["Units", "Model", "Parameter", "Initial", "Rule"]
+__all__ = ["Unit", "Model", "Parameter", "Initial", "Rule"]
 
 # Enable the custom units if not already enabled.
 try:
@@ -13,10 +13,10 @@ try:
 except:
     pass
 
-## New Units class ##
+## New Unit class ##
 
 
-class Units(pysb.Annotation):
+class Unit(pysb.Annotation):
 
     def __init__(self, parameter, unit_string, convert=None):
         self._unit_string = unit_string
@@ -81,7 +81,7 @@ class Model(pysb.Model):
     def units(self):
         unit_list = []
         for annotation in self.annotations:
-            if isinstance(annotation, Units):
+            if isinstance(annotation, Unit):
                 unit_list.append(annotation)
         return unit_list
 
@@ -89,7 +89,7 @@ class Model(pysb.Model):
     def unit_map(self):
         unit_dict = dict()
         for annotation in self.annotations:
-            if isinstance(annotation, Units):
+            if isinstance(annotation, Unit):
                 unit_dict[annotation.subject.name] = annotation.object
         return unit_dict
 
@@ -305,7 +305,7 @@ def add_units(model_cls):
     def units(self):
         unit_list = []
         for annotation in self.annotations:
-            if isinstance(annotation, Units):
+            if isinstance(annotation, Unit):
                 unit_list.append(annotation)
         return unit_list
 
@@ -315,7 +315,7 @@ def add_units(model_cls):
     def unit_map(self):
         unit_dict = dict()
         for annotation in self.annotations:
-            if isinstance(annotation, Units):
+            if isinstance(annotation, Unit):
                 unit_dict[annotation.subject.name] = annotation.object
         return unit_dict
 
