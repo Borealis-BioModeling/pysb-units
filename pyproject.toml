@@ -46,3 +46,6 @@ Changelog = "https://github.com/Borealis-BioModeling/pysb-units/blob/master/CHAN
 
 [tool.setuptools.packages.find]
 where = ["src"]
+
+[tool.setuptools.dynamic]
+version = {attr = "pysb.units.__version__"}
