@@ -2,7 +2,8 @@ import sympy
 from pysb.core import SelfExporter
 import pysb
 import astropy.units as u
-import unitdefs
+from abc import ABC
+from pysb.units import unitdefs
 
 # Define __all__
 
@@ -40,15 +41,12 @@ except:
 #             )
 #         return
 
-# class UnitBase(BaseUnit, pysb.Symbol):
+# class UnitBase(ABC, pysb.Annotation):
 #     pass
 
 
 class ParameterUnit(pysb.Annotation):
 
-    # def __new__(cls, parameter, unit_string, convert=False):
-    #     name = "new_unit"
-    #     return super(Unit, cls).__new__(cls, name)
 
     def __init__(self, parameter, unit_string, convert=None):
         if not isinstance(parameter, Parameter):
@@ -312,7 +310,7 @@ class Expression(pysb.Expression):
         obs_expr = expr.subs(subs_uni)
         unit_string = repr(unit_expr)
         if len(subs_obs) > 0:
-            if isinstance(obs_expr, pysb.Observable):
+            if isinstance(obs_expr, Observable):
                 obs_string = repr(obs_expr.name)
             else:
                 obs_string = repr(obs_expr)
