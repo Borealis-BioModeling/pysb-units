@@ -548,6 +548,13 @@ def add_units(model_cls):
 
     return model_cls
 
+def add_macro_units(macro_module):
+    # We can just override the default components
+    # from pysb.core with the pysb.units versions.
+    macro_module.Rule = Rule
+    macro_module.Parameter = Parameter
+    macro_module.Expression = Expression
+    return
 
 def check_units():
     print(SelfExporter.default_model.units)
