@@ -44,8 +44,12 @@ Repository = "https://github.com/Borealis-BioModeling/pysb-units"
 Issues = "https://github.com/Borealis-BioModeling/pysb-units/issues"
 Changelog = "https://github.com/Borealis-BioModeling/pysb-units/blob/master/CHANGELOG.md"
 
+# Find namespace package
 [tool.setuptools.packages.find]
 where = ["src"]
+include = ["pysb.units"]
+namespaces = true
 
+# Set the dynamic version
 [tool.setuptools.dynamic]
 version = {attr = "pysb.units.__version__"}
