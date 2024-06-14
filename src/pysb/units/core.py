@@ -1,3 +1,6 @@
+"""Defines the Unit object and drop-in replacements for other model components.
+"""
+
 import sympy
 from pysb.core import SelfExporter
 import pysb
@@ -46,9 +49,31 @@ except:
 
 
 class ParameterUnit(pysb.Annotation):
+    """Add unit annotation to Parameter components.
 
+    This subclass of the pysb.annotation.Annotation is only meant to be used
+    internally for additional subclassing.  
 
-    def __init__(self, parameter, unit_string, convert=None):
+    Attributes:
+      value (str): String representation of the units.
+      unit (astropy.units.Unit): Astropy Unit object version of the units.
+      expr (sympy.Symbol): sympy-based symbolic representation of the units.  
+    """
+
+    def __init__(self, parameter : pysb.units.Parameter, unit_string : str, convert : str | None =None):
+        """
+
+        Args:
+            parameter : The Parameter to which we want to add units.
+            unit_string : String representation of the units. 
+            convert (optional): String representation of another unit to which we want to convert unit_string. Defaults to None.
+
+        Raises:
+            ValueError: If parameter is not an instance of Parameter.
+            UnknownUnitError: If unit_string can't be parsed into a known unit/defined unit.
+            UnknownUnitError: If convert can't be parsed into a known unit/defined unit.
+            ValueError: If the conversion from unit_string to convert fails.
+        """
         if not isinstance(parameter, Parameter):
             raise ValueError(
                 "ParameterUnit can only be assigned to Parameter component."
@@ -87,11 +112,15 @@ class ParameterUnit(pysb.Annotation):
         return
 
     @property
-    def value(self):
+    def value(self) -> str:
+        """The string representation of the units.
+        """
         return self._unit_string
 
     @property
-    def unit(self):
+    def unit(self) -> u.Unit:
+        """The astropy.units.Unit object represneting the units.
+        """
         return self._unit
 
     def __repr__(self):
@@ -101,6 +130,8 @@ class ParameterUnit(pysb.Annotation):
 
     @property
     def expr(self):
+        """A sympy-based symbolic version of the units.
+        """
         unit_bases = self.unit.bases
         unit_powers = self.unit.powers
         unit_symbols = [sympy.Symbol(base.to_string()) for base in unit_bases]
@@ -549,8 +580,11 @@ def add_units(model_cls):
     return model_cls
 
 def add_macro_units(macro_module):
-    # We can just override the default components
-    # from pysb.core with the pysb.units versions.
+    """Monkey patches a module by reassigning model components to be their units versions.
+
+    Args:
+        macro_module (module): The module to which we want add units.
+    """
     macro_module.Rule = Rule
     macro_module.Parameter = Parameter
     macro_module.Expression = Expression
