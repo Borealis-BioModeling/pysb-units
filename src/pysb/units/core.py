@@ -31,211 +31,6 @@ try:
 except:
     pass
 
-## New Unit class ##
-
-# class BaseUnit(metaclass=u.Unit):
-
-#     def __init__(self, unit_string):
-#         try:
-#             super().__init__(unit_string)
-#         except:
-#             raise UnknownUnitError(
-#                 "Unrecognizable unit pattern '{}'".format(unit_string)
-#             )
-#         return
-
-# class UnitBase(ABC, pysb.Annotation):
-#     pass
-
-
-class ParameterUnit(pysb.Annotation):
-    """Add unit annotation to Parameter components.
-
-    This subclass of the pysb.annotation.Annotation is only meant to be used
-    internally for additional subclassing.  
-
-    Attributes:
-      value (str): String representation of the units.
-      unit (astropy.units.Unit): Astropy Unit object version of the units.
-      expr (sympy.Symbol): sympy-based symbolic representation of the units.  
-    """
-
-    def __init__(self, parameter : pysb.units.Parameter, unit_string : str, convert : str | None =None):
-        """
-
-        Args:
-            parameter : The Parameter to which we want to add units.
-            unit_string : String representation of the units. 
-            convert (optional): String representation of another unit to which we want to convert unit_string. Defaults to None.
-
-        Raises:
-            ValueError: If parameter is not an instance of Parameter.
-            UnknownUnitError: If unit_string can't be parsed into a known unit/defined unit.
-            UnknownUnitError: If convert can't be parsed into a known unit/defined unit.
-            ValueError: If the conversion from unit_string to convert fails.
-        """
-        if not isinstance(parameter, Parameter):
-            raise ValueError(
-                "ParameterUnit can only be assigned to Parameter component."
-            )
-        self._unit_string = unit_string
-        try:
-            self._unit = u.Unit(unit_string)
-            self._unit_string_parsed = self._unit.to_string()
-        except:
-            raise UnknownUnitError(
-                "Unrecognizable unit pattern '{}'".format(unit_string)
-            )
-        if convert is not None:
-            try:
-                unit_orig = self._unit
-                try:
-                    unit_new = u.Unit(convert)
-                except:
-                    raise UnknownUnitError(
-                        "Unrecognizable unit pattern '{}' for convert.".format(convert)
-                    )
-                conversion_factor = unit_orig.to(unit_new)
-                parameter.value *= conversion_factor
-                self._unit = unit_new
-                self._unit_string = convert
-                self._unit_string_parsed = unit_new.to_string()
-            except:
-                raise ValueError(
-                    "Unable to convert units {} to {}".format(unit_string, convert)
-                )
-        self._param = parameter
-        super().__init__(parameter, self._unit_string, predicate="units")
-        self.name = "unit_" + parameter.name
-        parameter.units = self
-        parameter.has_units = True
-        return
-
-    @property
-    def value(self) -> str:
-        """The string representation of the units.
-        """
-        return self._unit_string
-
-    @property
-    def unit(self) -> u.Unit:
-        """The astropy.units.Unit object represneting the units.
-        """
-        return self._unit
-
-    def __repr__(self):
-        repr_string = super().__repr__()
-        split = repr_string.split(",")
-        return "%s, %s)" % (split[0], split[1])
-
-    @property
-    def expr(self):
-        """A sympy-based symbolic version of the units.
-        """
-        unit_bases = self.unit.bases
-        unit_powers = self.unit.powers
-        unit_symbols = [sympy.Symbol(base.to_string()) for base in unit_bases]
-        return sympy.Mul(*[a**b for a, b in zip(unit_symbols, unit_powers)])
-
-
-class ExpressionUnit(ParameterUnit):
-
-    def __init__(self, expression, unit_string, obs_pattern=None):
-        if not isinstance(expression, Expression):
-            raise ValueError(
-                "ExpressionUnit can only be assigned to Expression component."
-            )
-        self._unit_string = unit_string
-        try:
-            self._unit = u.Unit(unit_string)
-            self._unit_string_parsed = self._unit.to_string()
-        except:
-            raise UnknownUnitError(
-                "Unrecognizable unit pattern '{}'".format(unit_string)
-            )
-        if obs_pattern is not None:
-            unit_obs = u.def_unit("unit({})".format(obs_pattern))
-            self._unit *= unit_obs
-            self._unit_string = self._unit.to_string()
-        self._expr = expression
-        super(ParameterUnit, self).__init__(
-            expression, self._unit_string, predicate="units"
-        )
-        self.name = "unit_" + expression.name
-        expression.units = self
-        expression.has_units = True
-        return
-
-
-class ObservableUnit(ParameterUnit):
-
-    def __init__(self, observable, unit_string, convert=None):
-        if not isinstance(observable, Observable):
-            raise ValueError(
-                "ObservableUnit can only be assigned to Observable component."
-            )
-        self._unit_string = unit_string
-        try:
-            self._unit = u.Unit(unit_string)
-            self._unit_string_parsed = self._unit.to_string()
-        except:
-            raise UnknownUnitError(
-                "Unrecognizable unit pattern '{}'".format(unit_string)
-            )
-        if convert is not None:
-            try:
-                unit_orig = self._unit
-                try:
-                    unit_new = u.Unit(convert)
-                except:
-                    raise UnknownUnitError(
-                        "Unrecognizable unit pattern '{}' for convert.".format(convert)
-                    )
-                self.conversion_factor = unit_orig.to(unit_new)
-                self._unit = unit_new
-                self._unit_string = convert
-                self._unit_string_parsed = unit_new.to_string()
-            except:
-                raise ValueError(
-                    "Unable to convert units {} to {}".format(unit_string, convert)
-                )
-            is_conc_unit = unitdefs.is_concentration(self._unit)
-            if not is_conc_unit:
-                msg = "Observable {} must be assigned a concentration or amount unit pattern. Unit pattern {} isn't a recognized concentration or amount pattern.".format(
-                    observable.name,
-                    self._unit_string,
-                )
-                raise WrongUnitError(msg)
-        self._obs = observable
-        super(ParameterUnit, self).__init__(
-            observable, self._unit_string, predicate="units"
-        )
-        self.name = "unit_" + observable.name
-        observable.units = self
-        observable.has_units = True
-        return
-
-
-class Unit(ExpressionUnit, ObservableUnit, ParameterUnit):
-
-    def __init__(self, component, unit_string, convert=None, obs_pattern=None):
-        if isinstance(component, Parameter):
-            ParameterUnit.__init__(self, component, unit_string, convert=convert)
-        elif isinstance(component, Expression):
-            ExpressionUnit.__init__(
-                self, component, unit_string, obs_pattern=obs_pattern
-            )
-        elif isinstance(component, Observable):
-            ObservableUnit.__init__(self, component, unit_string, convert=convert)
-        else:
-            raise ValueError(
-                "Unit can't be assigned to component type {}".format(
-                    repr(type(component))
-                )
-            )
-        return
-
-
 ## Drop-ins for model components with added units features. ##
 
 
@@ -539,6 +334,210 @@ ANY = pysb.ANY
 WILD = pysb.WILD
 Annotation = pysb.Annotation
 
+## New Unit class ##
+
+# class BaseUnit(metaclass=u.Unit):
+
+#     def __init__(self, unit_string):
+#         try:
+#             super().__init__(unit_string)
+#         except:
+#             raise UnknownUnitError(
+#                 "Unrecognizable unit pattern '{}'".format(unit_string)
+#             )
+#         return
+
+# class UnitBase(ABC, pysb.Annotation):
+#     pass
+
+
+class ParameterUnit(pysb.Annotation):
+    """Add unit annotation to Parameter components.
+
+    This subclass of the pysb.annotation.Annotation is only meant to be used
+    internally for additional subclassing.
+
+    Attributes:
+      value (str): String representation of the units.
+      unit (astropy.units.Unit): Astropy Unit object version of the units.
+      expr (sympy.Symbol): sympy-based symbolic representation of the units.
+    """
+
+    def __init__(
+        self, parameter: Parameter, unit_string: str, convert: str | None = None
+    ):
+        """
+
+        Args:
+            parameter : The Parameter to which we want to add units.
+            unit_string : String representation of the units.
+            convert (optional): String representation of another unit to which we want to convert unit_string. Defaults to None.
+
+        Raises:
+            ValueError: If parameter is not an instance of Parameter.
+            UnknownUnitError: If unit_string can't be parsed into a known unit/defined unit.
+            UnknownUnitError: If convert can't be parsed into a known unit/defined unit.
+            ValueError: If the conversion from unit_string to convert fails.
+        """
+        if not isinstance(parameter, Parameter):
+            raise ValueError(
+                "ParameterUnit can only be assigned to Parameter component."
+            )
+        self._unit_string = unit_string
+        try:
+            self._unit = u.Unit(unit_string)
+            self._unit_string_parsed = self._unit.to_string()
+        except:
+            raise UnknownUnitError(
+                "Unrecognizable unit pattern '{}'".format(unit_string)
+            )
+        if convert is not None:
+            try:
+                unit_orig = self._unit
+                try:
+                    unit_new = u.Unit(convert)
+                except:
+                    raise UnknownUnitError(
+                        "Unrecognizable unit pattern '{}' for convert.".format(convert)
+                    )
+                conversion_factor = unit_orig.to(unit_new)
+                parameter.value *= conversion_factor
+                self._unit = unit_new
+                self._unit_string = convert
+                self._unit_string_parsed = unit_new.to_string()
+            except:
+                raise ValueError(
+                    "Unable to convert units {} to {}".format(unit_string, convert)
+                )
+        self._param = parameter
+        super().__init__(parameter, self._unit_string, predicate="units")
+        self.name = "unit_" + parameter.name
+        parameter.units = self
+        parameter.has_units = True
+        return
+
+    @property
+    def value(self) -> str:
+        """The string representation of the units."""
+        return self._unit_string
+
+    @property
+    def unit(self) -> u.Unit:
+        """The astropy.units.Unit object represneting the units."""
+        return self._unit
+
+    def __repr__(self):
+        repr_string = super().__repr__()
+        split = repr_string.split(",")
+        return "%s, %s)" % (split[0], split[1])
+
+    @property
+    def expr(self):
+        """A sympy-based symbolic version of the units."""
+        unit_bases = self.unit.bases
+        unit_powers = self.unit.powers
+        unit_symbols = [sympy.Symbol(base.to_string()) for base in unit_bases]
+        return sympy.Mul(*[a**b for a, b in zip(unit_symbols, unit_powers)])
+
+
+class ExpressionUnit(ParameterUnit):
+
+    def __init__(self, expression, unit_string, obs_pattern=None):
+        if not isinstance(expression, Expression):
+            raise ValueError(
+                "ExpressionUnit can only be assigned to Expression component."
+            )
+        self._unit_string = unit_string
+        try:
+            self._unit = u.Unit(unit_string)
+            self._unit_string_parsed = self._unit.to_string()
+        except:
+            raise UnknownUnitError(
+                "Unrecognizable unit pattern '{}'".format(unit_string)
+            )
+        if obs_pattern is not None:
+            unit_obs = u.def_unit("unit({})".format(obs_pattern))
+            self._unit *= unit_obs
+            self._unit_string = self._unit.to_string()
+        self._expr = expression
+        super(ParameterUnit, self).__init__(
+            expression, self._unit_string, predicate="units"
+        )
+        self.name = "unit_" + expression.name
+        expression.units = self
+        expression.has_units = True
+        return
+
+
+class ObservableUnit(ParameterUnit):
+
+    def __init__(self, observable, unit_string, convert=None):
+        if not isinstance(observable, Observable):
+            raise ValueError(
+                "ObservableUnit can only be assigned to Observable component."
+            )
+        self._unit_string = unit_string
+        try:
+            self._unit = u.Unit(unit_string)
+            self._unit_string_parsed = self._unit.to_string()
+        except:
+            raise UnknownUnitError(
+                "Unrecognizable unit pattern '{}'".format(unit_string)
+            )
+        if convert is not None:
+            try:
+                unit_orig = self._unit
+                try:
+                    unit_new = u.Unit(convert)
+                except:
+                    raise UnknownUnitError(
+                        "Unrecognizable unit pattern '{}' for convert.".format(convert)
+                    )
+                self.conversion_factor = unit_orig.to(unit_new)
+                self._unit = unit_new
+                self._unit_string = convert
+                self._unit_string_parsed = unit_new.to_string()
+            except:
+                raise ValueError(
+                    "Unable to convert units {} to {}".format(unit_string, convert)
+                )
+            is_conc_unit = unitdefs.is_concentration(self._unit)
+            if not is_conc_unit:
+                msg = "Observable {} must be assigned a concentration or amount unit pattern. Unit pattern {} isn't a recognized concentration or amount pattern.".format(
+                    observable.name,
+                    self._unit_string,
+                )
+                raise WrongUnitError(msg)
+        self._obs = observable
+        super(ParameterUnit, self).__init__(
+            observable, self._unit_string, predicate="units"
+        )
+        self.name = "unit_" + observable.name
+        observable.units = self
+        observable.has_units = True
+        return
+
+
+class Unit(ExpressionUnit, ObservableUnit, ParameterUnit):
+
+    def __init__(self, component, unit_string, convert=None, obs_pattern=None):
+        if isinstance(component, Parameter):
+            ParameterUnit.__init__(self, component, unit_string, convert=convert)
+        elif isinstance(component, Expression):
+            ExpressionUnit.__init__(
+                self, component, unit_string, obs_pattern=obs_pattern
+            )
+        elif isinstance(component, Observable):
+            ObservableUnit.__init__(self, component, unit_string, convert=convert)
+        else:
+            raise ValueError(
+                "Unit can't be assigned to component type {}".format(
+                    repr(type(component))
+                )
+            )
+        return
+
+
 # Utility functions:
 
 
@@ -579,6 +578,7 @@ def add_units(model_cls):
 
     return model_cls
 
+
 def add_macro_units(macro_module):
     """Monkey patches a module by reassigning model components to be their units versions.
 
@@ -589,6 +589,7 @@ def add_macro_units(macro_module):
     macro_module.Parameter = Parameter
     macro_module.Expression = Expression
     return
+
 
 def check_units():
     print(SelfExporter.default_model.units)
