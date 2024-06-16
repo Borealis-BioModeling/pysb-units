@@ -1,6 +1,7 @@
 """Defines the Unit object and drop-in replacements for other model components.
 """
 
+import warnings
 import sympy
 from pysb.core import SelfExporter
 import pysb
@@ -23,6 +24,7 @@ __all__ = [
     "ANY",
     "WILD",
     "Annotation",
+    "check",
 ]
 
 # Enable the custom units if not already enabled.
@@ -439,6 +441,10 @@ class ParameterUnit(pysb.Annotation):
         unit_symbols = [sympy.Symbol(base.to_string()) for base in unit_bases]
         return sympy.Mul(*[a**b for a, b in zip(unit_symbols, unit_powers)])
 
+    @property
+    def physical_type(self):
+        return self.unit.physical_type
+
 
 class ExpressionUnit(ParameterUnit):
 
@@ -591,8 +597,87 @@ def add_macro_units(macro_module):
     return
 
 
-def check_units():
-    print(SelfExporter.default_model.units)
+def check(model: Model = None) -> None:
+    """Check for inconsistent or missing units.
+
+    Args:
+        model (optional): The model to check. Defaults to None.
+         If None, it use PySB's SelfExporter to set the current model
+         in the calling namespace.
+    """
+    if model is None:
+        model = SelfExporter.default_model
+    try:
+        units = model.units
+    except:
+        warnings.warn("Model {} has no units to check.".format(model.name))
+        return
+    
+    # Here we check for any unit duplication where a component is assigned 
+    # multiple units.
+    n_units = len(units)
+    for i in range(n_units - 1):
+        unit_i = units[i]
+        subject_i = unit_i.subject
+        for j in range(i + 1, n_units):
+            unit_j = units[j]
+            subject_j = unit_j.subject
+            if (subject_i == subject_j):
+
+                warnings.warn(
+                    "{} \'{}\' has been assigned multiple units.".format(
+                        repr(type(subject_i)),
+                        subject_i.name
+                    ),
+                    stacklevel=3,
+                )   
+
+    # Here we compile the different unit types based on physical type
+    # so we cross-check for consistency.
+    unit_types = dict()
+    for unit in units:
+        phys_type = unit.physical_type
+        if phys_type not in unit_types.keys():
+            unit_types[phys_type] = list()
+            unit_types[phys_type].append(unit)
+        else:
+            unit_types[phys_type].append(unit)
+    for key in unit_types.keys():
+        unis = unit_types[key]
+        n_unis = len(unis)
+        for i in range(n_unis - 1):
+            uni_i = unis[i]
+            type_i = repr(type(uni_i.subject))
+            sub_name_i = uni_i.subject.name
+            uni_i_str = uni_i.value
+            for j in range(i + 1, n_unis):
+                uni_j = unis[j]
+                type_j = repr(type(uni_j.subject))
+                sub_name_j = uni_j.subject.name
+                uni_j_str = uni_j.value
+                if not (uni_i == uni_j):
+
+                    warnings.warn(
+                        "Units '{}' for {} '{}' and '{}' for {} '{}' of unit-type '{}' do not match. \n Double-check units for consistency.".format(
+                            uni_i_str,
+                            type_i,
+                            sub_name_i,
+                            uni_j_str,
+                            type_j,
+                            sub_name_j,
+                            key,
+                        ),
+                        stacklevel=3,
+                    )
+    # Here we check for any parameters that don't have units.
+    for param in model.parameters:
+        if not param.has_units:
+            warnings.warn(
+                "Parameter '{}' hasn't been assigned any units.".format(param.name),
+                stacklevel=3,
+            )
+
+    return
 
 
 def rule_orders():
@@ -620,5 +705,10 @@ class MissingUnitError(ValueError):
 
 class WrongUnitError(ValueError):
     """A component has the wrong units for its intended usage."""
+
+    pass
+
+class DuplicateUnitError(ValueError):
+    """A component already has units."""
 
     pass
