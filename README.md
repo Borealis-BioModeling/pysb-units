@@ -123,7 +123,8 @@ Initial(protein, protein_0)
 Rule('degradation', protein >> None, k_deg)
 
 ```
-* pysb with pysb-units
+
+* pysb with pysb-units - explicit version
 ```python
 
 # Instead of importing model components from the core
@@ -158,8 +159,46 @@ units.Rule('degradation', protein >> None, k_deg)
 In the above example, using the united versions applies additional features and unit validation such as:
  * When providing the optional `convert` argument in `units.Unit(protein_0, 'nM', convert='uM')` the units are automatically converted from nM to uM with the appropriate scaling factor applied to the `protein_0` parameter value.
  * With `units.Initial(protein, protein_0)` the units of `protein_0` will be checked to make sure they are a valid concentration. 
- * With `units.Rule('degradation', protein >> None, k_deg)` the reaction order of the rule will be determined and the units of `k_deg`` will be checked to make sure they match the expected unit type corresponding to that reaction order. In this case, the degradation is a 1st-order reaction, so `k_deg`` is expected to have 
+ * With `units.Rule('degradation', protein >> None, k_deg)` the reaction order of the rule will be determined and the units of `k_deg` will be checked to make sure they match the expected unit type corresponding to that reaction order. In this case, the degradation is a 1st-order reaction, so `k_deg` is expected to have 
 inverse time (i.e., frequency) units: [1 /  time], such as, [1 / s] or [1 / h].
+
+## Unitize function
+
+In the previous example, we explicity called model components from the `units` module: e.g., `units.Model()`. This can feel a bit clunky, especially when adapting existing models. If you prefer, you can use the `unitize` utility function at the beginning of your model code to automatically replace model components with their `pysb.units` variants while added the new `Unit` object as well. Taking our previous example, this approach would look like:
+```python
+# Import the model components we need from pysb
+from pysb import Model, Parameter, Monomer, Initial
+
+# Import the units module:
+import pysb.units as units
+
+# Unitize the model:
+units.unitize()
+
+# Initialize the PySB model:
+Model()
+
+# Monomer(s):
+Monomer('protein')
+
+# Model parameter(s):
+# Initial concentration of protein
+Parameter('protein_0', 500.)
+# Attach a concentration unit to protein_0.
+Unit(protein_0, 'nM', convert='uM')
+# 1st-order rate parameter for the degradation
+Parameter('k_deg', 0.1)
+# Attach a frequency unit to k_deg.
+Unit(k_deg, '1/s')
+
+# Initial concentration(s)
+Initial(protein, protein_0)
+
+# Reaction rule(s)
+# Just the one degradation
+Rule('degradation', protein >> None, k_deg)
+
+```
 
 ## Additional unit checks
 
@@ -196,6 +235,48 @@ units.Rule('degradation', protein >> None, k_deg)
 
 # Additional unit checks.
 units.check()
+```
+
+## Using units pysb.macros
+
+PySB contains some helpful macro functions, such as `bind` and `degrade`, that can be used to streamline rule creation for recurring motifs. To use these macros with the `pysb.units` add-on you can use the `add_macro_units` function as below:
+```python
+# Instead of importing model components from the core
+# pysb package we can import the units module:
+import pysb.units as units
+# Import the module with the wanted macros:
+from pysb import macros
+
+# Apply the add_macro_units function:
+units.add_macro_units(macros)
+
+# Initialize the PySB model:
+units.Model()
+
+# Monomer(s):
+units.Monomer('protein')
+
+# Model parameter(s):
+# Initial concentration of protein
+units.Parameter('protein_0', 500.)
+# Attach a concentration unit to protein_0.
+units.Unit(protein_0, 'nM', convert='uM')
+# 1st-order rate parameter for the degradation
+units.Parameter('k_deg', 0.1)
+# Attach a frequency unit to k_deg.
+units.Unit(k_deg, '1/s')
+
+# Initial concentration(s)
+units.Initial(protein, protein_0)
+
+# Reaction rule(s)
+# Just the one degradation
+macros.degrade(protein, k_deg)
+
+# Additional unit checks.
+units.check()
+
+
 ```
 
 ------

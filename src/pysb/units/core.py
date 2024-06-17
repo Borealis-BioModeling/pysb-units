@@ -25,6 +25,7 @@ __all__ = [
     "WILD",
     "Annotation",
     "check",
+    "unitize",
 ]
 
 # Enable the custom units if not already enabled.
@@ -594,6 +595,30 @@ def add_macro_units(macro_module):
     macro_module.Rule = Rule
     macro_module.Parameter = Parameter
     macro_module.Expression = Expression
+    return
+
+
+def unitize() -> None:
+    """Monkey patches the model definition modules namespace and replaces model components with their units versions."""
+    import inspect
+
+    frame = inspect.currentframe()
+    model_module_vars = frame.f_back.f_locals
+    units_vars = globals()
+    components_replace = [
+        "Rule",
+        "Parameter",
+        "Expression",
+        "Model",
+        "Observable",
+        "Initial",
+    ]
+    for component in components_replace:
+        if component in model_module_vars:
+            model_module_vars[component] = units_vars[component]
+
+    if "Unit" not in model_module_vars:
+        model_module_vars["Unit"] = Unit
     return
 
 
