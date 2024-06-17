@@ -161,9 +161,9 @@ In the above example, using the united versions applies additional features and 
  * With `units.Rule('degradation', protein >> None, k_deg)` the reaction order of the rule will be determined and the units of `k_deg`` will be checked to make sure they match the expected unit type corresponding to that reaction order. In this case, the degradation is a 1st-order reaction, so `k_deg`` is expected to have 
 inverse time (i.e., frequency) units: [1 /  time], such as, [1 / s] or [1 / h].
 
-## Additional unit consistency check
+## Additional unit checks
 
-When defining a model you can call `check` function to evaluate unit consistency:
+When defining a model with units you can call the `check` function to perform additional unit checks and receive warnings for any possible problems, including checking for multiple units assigned to the same model component, unit consistency for units of the same physical type (e.g., `1/s` vs. `1/h`), and any parameters with missing units. Simply add a call to the `pysb.units.check` function at the end of your model code as shown below:
 
 ```python
 
@@ -194,11 +194,9 @@ units.Initial(protein, protein_0)
 # Just the one degradation
 units.Rule('degradation', protein >> None, k_deg)
 
-# Check for unit-consistency and parameters without units.
+# Additional unit checks.
 units.check()
 ```
-
-This will cause warning messages to be displayed for any non-matching units of the same physical type. E.g., if units of one rate parameter are `1/s` (per second) and another is `1/h` (per hour) a warning will issued to let the modeler know that these units are inconsistent. It will also check all model parameters and report any that have not been assigned units.
 
 ------
 
