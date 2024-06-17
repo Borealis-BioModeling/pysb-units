@@ -610,10 +610,14 @@ def check(model: Model = None) -> None:
     try:
         units = model.units
     except:
-        warnings.warn("Model {} has no units to check.".format(model.name))
+        warnings.warn(
+            "Model {} has no units to check.".format(model.name),
+            UnitsWarning,
+            stacklevel=3,
+        )
         return
-    
-    # Here we check for any unit duplication where a component is assigned 
+
+    # Here we check for any unit duplication where a component is assigned
     # multiple units.
     n_units = len(units)
     for i in range(n_units - 1):
@@ -622,15 +626,15 @@ def check(model: Model = None) -> None:
         for j in range(i + 1, n_units):
             unit_j = units[j]
             subject_j = unit_j.subject
-            if (subject_i == subject_j):
+            if subject_i == subject_j:
 
                 warnings.warn(
-                    "{} \'{}\' has been assigned multiple units.".format(
-                        repr(type(subject_i)),
-                        subject_i.name
+                    "{} '{}' has been assigned multiple units.".format(
+                        repr(type(subject_i)), subject_i.name
                     ),
+                    UnitsWarning,
                     stacklevel=3,
-                )   
+                )
 
     # Here we compile the different unit types based on physical type
     # so we cross-check for consistency.
@@ -667,6 +671,7 @@ def check(model: Model = None) -> None:
                             sub_name_j,
                             key,
                         ),
+                        UnitsWarning,
                         stacklevel=3,
                     )
     # Here we check for any parameters that don't have units.
@@ -674,6 +679,7 @@ def check(model: Model = None) -> None:
         if not param.has_units:
             warnings.warn(
                 "Parameter '{}' hasn't been assigned any units.".format(param.name),
+                UnitsWarning,
                 stacklevel=3,
             )
 
@@ -708,7 +714,17 @@ class WrongUnitError(ValueError):
 
     pass
 
+
 class DuplicateUnitError(ValueError):
     """A component already has units."""
+
+    pass
+
+
+# Warning Classes
+
+
+class UnitsWarning(UserWarning):
+    """There is a potential issue with the units."""
 
     pass
