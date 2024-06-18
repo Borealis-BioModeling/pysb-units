@@ -53,7 +53,7 @@ u.physical.def_physical_type(cell, "cell")
 # Number per cell type
 u.physical.def_physical_type(cell**-1, "number per cell")
 # New reaction rate type for rates 1 / ( [number per cell] * [time])
-u.physical.def_physical_type((cell**-1 / u.s), "cellular reaction rate")
+u.physical.def_physical_type((1 / (cell**-1 * u.s)), "cellular reaction rate")
 # Ratio of mol / area is unknown phyical type by default, so let's define here:
 u.physical.def_physical_type((u.mol / u.m**2), "mole area density")
 # Ratio of g / s is unknown phyical type by default, so let's define here:
