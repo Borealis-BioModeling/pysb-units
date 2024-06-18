@@ -662,10 +662,17 @@ def check(model: Model = None) -> None:
                 )
 
     # Here we compile the different unit types based on physical type
-    # so we cross-check for consistency.
+    # and cross-check for consistency amongst common physical type.
     unit_types = dict()
     for unit in units:
-        phys_type = unit.physical_type
+        if unitdefs.is_concentration(unit.unit):
+            phys_type = 'concentration'
+        elif unitdefs.is_zero_order_rate_constant(unit.unit):
+            phys_type = 'reaction rate'
+        elif unitdefs.is_second_order_rate_constant(unit.unit):
+            phys_type = 'second order rate constant'    
+        else:    
+            phys_type = unit.physical_type
         if phys_type not in unit_types.keys():
             unit_types[phys_type] = list()
             unit_types[phys_type].append(unit)
@@ -699,6 +706,8 @@ def check(model: Model = None) -> None:
                         UnitsWarning,
                         stacklevel=3,
                     )
+
+
     # Here we check for any parameters that don't have units.
     for param in model.parameters:
         if not param.has_units:
