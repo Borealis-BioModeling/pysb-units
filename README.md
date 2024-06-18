@@ -279,6 +279,18 @@ units.check()
 
 ```
 
+## Custom Units
+
+`pysb.units` leverages the `astropy.units` package for unit parsing and as its physical units library, but adds the following custom units/unit-types for reaction model use:
+
+ * "M" = molar concentration : an alias for mole / L. Includes all fraction orders from femto to milli.
+ * "1/cell" = number per cell : useful for stochastic simulations.
+ * "1 / (cell**-1 * s)" = cellular reaction rate : reaction rate corresponding to concentrations in number per cell  
+ * "mcg" = micrograms : alias for "ug", often used in pharmaceuticals.
+ * "mole / m**2" = mole area density 
+ * "g / s" = mass velocity : for reaction rates where mass is used in place of concentration.
+
+
 ------
 
 # Contact
