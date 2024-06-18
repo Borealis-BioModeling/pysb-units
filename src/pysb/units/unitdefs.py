@@ -90,22 +90,21 @@ rate_phys_types = [unit.physical_type for unit in rate_units]
 
 # Define functions to check if physical type matches a 
 # concentration or rate type:
-def is_concentration(unit):
+def is_concentration(unit: u.Unit) -> bool:
     phys_type = unit.physical_type
     return (phys_type in concentration_phys_types)
 
-def is_rate(unit):
+def is_rate(unit: u.Unit) -> bool:
     phys_type = unit.physical_type
     return (phys_type in rate_phys_types)
 
-def is_zero_order_rate_constant(unit):
+def is_zero_order_rate_constant(unit: u.Unit) -> bool:
     return is_rate(unit)
 
-def is_first_order_rate_constant(unit):
+def is_first_order_rate_constant(unit: u.Unit) -> bool:
     return ("frequency" == unit.physical_type)
 
-# Still working on this one
-def is_second_order_rate_constant(unit):
+def is_second_order_rate_constant(unit: u.Unit) -> bool:
     bases = unit.bases
     powers = unit.powers
     phys_types = [base.physical_type for base in bases]
