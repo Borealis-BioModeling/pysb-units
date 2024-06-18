@@ -655,7 +655,11 @@ def check(model: Model = None) -> None:
 
                 warnings.warn(
                     "{} '{}' has been assigned multiple units.".format(
-                        repr(type(subject_i)), subject_i.name
+                        repr(type(subject_i))
+                        .split(".")[-1]
+                        .replace("'", "")
+                        .replace(">", ""),
+                        subject_i.name,
                     ),
                     UnitsWarning,
                     stacklevel=3,
@@ -666,12 +670,12 @@ def check(model: Model = None) -> None:
     unit_types = dict()
     for unit in units:
         if unitdefs.is_concentration(unit.unit):
-            phys_type = 'concentration'
+            phys_type = "concentration"
         elif unitdefs.is_zero_order_rate_constant(unit.unit):
-            phys_type = 'reaction rate'
+            phys_type = "reaction rate"
         elif unitdefs.is_second_order_rate_constant(unit.unit):
-            phys_type = 'second order rate constant'    
-        else:    
+            phys_type = "second order rate constant"
+        else:
             phys_type = unit.physical_type
         if phys_type not in unit_types.keys():
             unit_types[phys_type] = list()
@@ -683,12 +687,22 @@ def check(model: Model = None) -> None:
         n_unis = len(unis)
         for i in range(n_unis - 1):
             uni_i = unis[i]
-            type_i = repr(type(uni_i.subject))
+            type_i = (
+                repr(type(uni_i.subject))
+                .split(".")[-1]
+                .replace("'", "")
+                .replace(">", "")
+            )
             sub_name_i = uni_i.subject.name
             uni_i_str = uni_i.value
             for j in range(i + 1, n_unis):
                 uni_j = unis[j]
-                type_j = repr(type(uni_j.subject))
+                type_j = (
+                    repr(type(uni_j.subject))
+                    .split(".")[-1]
+                    .replace("'", "")
+                    .replace(">", "")
+                )
                 sub_name_j = uni_j.subject.name
                 uni_j_str = uni_j.value
                 if not (uni_i == uni_j):
@@ -706,7 +720,6 @@ def check(model: Model = None) -> None:
                         UnitsWarning,
                         stacklevel=3,
                     )
-
 
     # Here we check for any parameters that don't have units.
     for param in model.parameters:
