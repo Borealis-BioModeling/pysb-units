@@ -3,8 +3,8 @@
 ![Python version badge](https://img.shields.io/badge/python-3.11.3-blue.svg)
 [![PySB version badge](https://img.shields.io/badge/PySB->%3D1.15.0-9cf.svg)](https://pysb.org/)
 [![license](https://img.shields.io/github/license/Borealis-BioModeling/pysb-units.svg)](LICENSE)
-![version](https://img.shields.io/badge/version-0.1.0-orange.svg)
-[![release](https://img.shields.io/github/release-pre/Borealis-BioModeling/pysb-units.svg)](https://github.com/Borealis-BioModeling/pysb-units/releases/tag/v0.1.0)
+![version](https://img.shields.io/badge/version-0.2.0-orange.svg)
+[![release](https://img.shields.io/github/release-pre/Borealis-BioModeling/pysb-units.svg)](https://github.com/Borealis-BioModeling/pysb-units/releases/tag/v0.2.0)
 
 `pysb-units` is an add-on for the [PySB](https://pysb.org/) modeling framework that provides tools to add units to models. 
 
@@ -45,27 +45,27 @@ Note that `pysb-units` has the following core dependencies:
 
 ### pip install
 
-You can install `pysb-units` version 0.1.0 with `pip` sourced from the GitHub repo:
+You can install `pysb-units` version 0.2.0 with `pip` sourced from the GitHub repo:
 
 ##### with git installed:
 
 Fresh install:
 ```
-pip install git+https://github.com/Borealis-BioModeling/pysb-units@v0.1.0
+pip install git+https://github.com/Borealis-BioModeling/pysb-units@v0.2.0
 ```
 Or to upgrade from an older version:
 ```
-pip install --upgrade git+https://github.com/Borealis-BioModeling/pysb-units@v0.1.0
+pip install --upgrade git+https://github.com/Borealis-BioModeling/pysb-units@v0.2.0
 ```
 ##### without git installed:
 
 Fresh install:
 ```
-pip install https://github.com/Borealis-BioModeling/pysb-units/archive/refs/tags/v0.1.0.zip
+pip install https://github.com/Borealis-BioModeling/pysb-units/archive/refs/tags/v0.2.0.zip
 ```
 Or to upgrade from an older version:
 ```
-pip install --upgrade https://github.com/Borealis-BioModeling/pysb-units/archive/refs/tags/v0.1.0.zip
+pip install --upgrade https://github.com/Borealis-BioModeling/pysb-units/archive/refs/tags/v0.2.0.zip
 ```
 ### Manual install
 
@@ -92,7 +92,7 @@ See: [CHANGELOG](CHANGELOG.md)
 
 ## Quick Overview
 
-The key features of `pysb-units` are a new `Unit` object derived from pysb annotations with additional drop-in replacements for core model components, including `Model`, `Parameter`, `Expression`, `Rule`, and `Initial`, that include new features to help manage units.   
+The key features of `pysb-units` are a new `Unit` object derived from pysb annotations, a new `SimulationUnits` object, and drop-in replacements for core model components, including `Model`, `Parameter`, `Expression`, `Rule`, `Initial`, and `Observable` that include new features to help manage units. Additionally, `pysb-units` defines a couple of useful utility functions, including the `unitize` and `check` functions, which make it easier to add units to model and run additional unit checks (such as unit consistency).   
 
 ### Example
 
@@ -101,7 +101,7 @@ A simple model with one degradation reaction:
 * Regular pysb:
 ```python
 
-from pysb import Model, Parameter, Monomer, Initial
+from pysb import Model, Parameter, Monomer, Initial, Observable, Expression
 
 # Initialize the PySB model:
 Model()
@@ -120,162 +120,151 @@ Initial(protein, protein_0)
 
 # Reaction rule(s)
 # Just the one degradation
-Rule('degradation', protein >> None, k_deg)
+Rule('degradation', protein() >> None, k_deg)
+
+# Observables
+# Time-dependent protein concentration:
+Observable('protein_t', protein()) # uM
+
+# Expressions
+# The time-dependent degradation rate:
+Expression('deg_rate', (protein_t * k_deg)) # uM/s
 
 ```
 
-* pysb with pysb-units - explicit version
+* pysb with pysb-units
 ```python
-
-# Instead of importing model components from the core
-# pysb package we can import the units module:
+# Import the pysb components we need:
+from pysb import Model, Parameter, Monomer, Initial, Observable, Expression
+# Import pysb-units:
 import pysb.units as units
 
-# Initialize the PySB model:
-units.Model()
-
-# Monomer(s):
-units.Monomer('protein')
-
-# Model parameter(s):
-# Initial concentration of protein
-units.Parameter('protein_0', 500.)
-# Attach a concentration unit to protein_0.
-units.Unit(protein_0, 'nM', convert='uM')
-# 1st-order rate parameter for the degradation
-units.Parameter('k_deg', 0.1)
-# Attach a frequency unit to k_deg.
-units.Unit(k_deg, '1/s')
-
-# Initial concentration(s)
-units.Initial(protein, protein_0)
-
-# Reaction rule(s)
-# Just the one degradation
-units.Rule('degradation', protein >> None, k_deg)
-
-```
-
-In the above example, using the united versions applies additional features and unit validation such as:
- * When providing the optional `convert` argument in `units.Unit(protein_0, 'nM', convert='uM')` the units are automatically converted from nM to uM with the appropriate scaling factor applied to the `protein_0` parameter value.
- * With `units.Initial(protein, protein_0)` the units of `protein_0` will be checked to make sure they are a valid concentration. 
- * With `units.Rule('degradation', protein >> None, k_deg)` the reaction order of the rule will be determined and the units of `k_deg` will be checked to make sure they match the expected unit type corresponding to that reaction order. In this case, the degradation is a 1st-order reaction, so `k_deg` is expected to have 
-inverse time (i.e., frequency) units: [1 /  time], such as, [1 / s] or [1 / h].
-
-## Unitize function
-
-In the previous example, we explicity called model components from the `units` module: e.g., `units.Model()`. This can feel a bit clunky, especially when adapting existing models. If you prefer, you can use the `unitize` utility function at the beginning of your model code to automatically replace model components with their `pysb.units` variants while added the new `Unit` object as well. Taking our previous example, this approach would look like:
-```python
-# Import the model components we need from pysb
-from pysb import Model, Parameter, Monomer, Initial
-
-# Import the units module:
-import pysb.units as units
-
-# Unitize the model:
+# Activate units - replaces core model components
+# with the appropriate versions from pysb.units:
 units.unitize()
 
 # Initialize the PySB model:
 Model()
 
+# The primary units needed for simulating the model are 
+# concentration (or amount) and time. We can define those
+# here with SimulationUnits:
+SimulationUnits(concentration='uM', time='s')
+
 # Monomer(s):
 Monomer('protein')
 
 # Model parameter(s):
-# Initial concentration of protein
+# Initial concentration of protein:
 Parameter('protein_0', 500.)
-# Attach a concentration unit to protein_0.
-Unit(protein_0, 'nM', convert='uM')
+# Attach units to protein_0:
+Unit(protein_0, 'nM')
+
+
 # 1st-order rate parameter for the degradation
-Parameter('k_deg', 0.1)
-# Attach a frequency unit to k_deg.
-Unit(k_deg, '1/s')
+# defined with frequency (1/time) units - here, 
+# we chain Unit and Parameter definitions:
+Unit(Parameter('k_deg', 0.1), '1/s') 
+
 
 # Initial concentration(s)
 Initial(protein, protein_0)
 
-# Reaction rule(s)
-# Just the one degradation
-Rule('degradation', protein >> None, k_deg)
-
-```
-
-## Additional unit checks
-
-When defining a model with units you can call the `check` function to perform additional unit checks and receive warnings for any possible problems, including checking for multiple units assigned to the same model component, unit consistency for units of the same physical type (e.g., `1/s` vs. `1/h`), and any parameters with missing units. Simply add a call to the `pysb.units.check` function at the end of your model code as shown below:
-
-```python
-
-# Instead of importing model components from the core
-# pysb package we can import the units module:
-import pysb.units as units
-
-# Initialize the PySB model:
-units.Model()
-
-# Monomer(s):
-units.Monomer('protein')
-
-# Model parameter(s):
-# Initial concentration of protein
-units.Parameter('protein_0', 500.)
-# Attach a concentration unit to protein_0.
-units.Unit(protein_0, 'nM', convert='uM')
-# 1st-order rate parameter for the degradation
-units.Parameter('k_deg', 0.1)
-# Attach a frequency unit to k_deg.
-units.Unit(k_deg, '1/s')
-
-# Initial concentration(s)
-units.Initial(protein, protein_0)
 
 # Reaction rule(s)
 # Just the one degradation
-units.Rule('degradation', protein >> None, k_deg)
+Rule('degradation', protein() >> None, k_deg)
 
-# Additional unit checks.
+# Observables
+# Time-dependent protein concentration:
+Observable('protein_t', protein())
+
+# Expressions
+# The time-dependent degradation rate:
+Expression('deg_rate', (protein_t * k_deg))
+
+# Apply additional unit checks, including unit duplication
+# and unit consistency checking:
 units.check()
+
 ```
 
-## Using units pysb.macros
+In the above unit-ed example, additional unit-based features and unit validation are applied:
+ * `SimulationUnits(concentration='uM', time='s')` - sets the the expected units for the concentration (or amount) and time globally for the model. Any parameters that have concentration or time units will be checked against these definitions and if necessary automatically converted to the expected units.
+ * `Unit(protein_0, 'nM')` - the unit 'nM' will be automatically converted to 'uM'since that is the global concentration unit we defined with `SimulationUnits`, and the appropriate scaling will be applied to `protein_0.value`. 
+ * `Initial(protein, protein_0)` the units of `protein_0` will be checked to make sure they are a valid concentration. 
+ * `Rule('degradation', protein >> None, k_deg)` the reaction order of the rule will be determined and the units of `k_deg` will be checked to make sure they match the expected unit type corresponding to that reaction order. In this case, the degradation is a 1st-order reaction, so `k_deg` is expected to have 
+inverse time (i.e., frequency) units: [1 /  time], such as, [1 / s] or [1 / h].
+ * `Observable('protein_t', protein())` - here, the units of the observable will be automatically inferred based on those set with `SimulationUnits`, so the observable will have units of 'uM'.
+ * `Expression('deg_rate', (protein_t * k_deg))` - units of expressions are automatically inferred from the units of parameters and observables, so in this case the Expression will have units of 'uM/s'.
+ * `units.check()` - this function applies additional unit checking and will issue warnings for duplicate units (two different units assigned to the same parameter), lack of consistency for units of the same physical type (e.g., concentration, time, etc.), and parameters without any 
+
+
+
+## Using units with pysb.macros
 
 PySB contains some helpful macro functions, such as `bind` and `degrade`, that can be used to streamline rule creation for recurring motifs. To use these macros with the `pysb.units` add-on you can use the `add_macro_units` function as below:
+
 ```python
-# Instead of importing model components from the core
-# pysb package we can import the units module:
-import pysb.units as units
+# Import the pysb components we need:
+from pysb import Model, Parameter, Monomer, Initial, Observable, Expression
 # Import the module with the wanted macros:
 from pysb import macros
+# Import pysb-units:
+import pysb.units as units
 
-# Apply the add_macro_units function:
+# Activate units - replaces core model components
+# with the appropriate versions from pysb.units:
+units.unitize()
+# Apply the units to the macros module:
 units.add_macro_units(macros)
 
+
 # Initialize the PySB model:
-units.Model()
+Model()
+
+# The core units used when simulating the model are 
+# concentration (or amount) and time. We can define those
+# here with SimulationUnits:
+SimulationUnits(concentration='uM', time='s')
 
 # Monomer(s):
-units.Monomer('protein')
+Monomer('protein')
 
 # Model parameter(s):
-# Initial concentration of protein
-units.Parameter('protein_0', 500.)
-# Attach a concentration unit to protein_0.
-units.Unit(protein_0, 'nM', convert='uM')
+# Initial concentration of protein:
+Parameter('protein_0', 500.)
+# Attach units to protein_0:
+Unit(protein_0, 'nM')
+
+
 # 1st-order rate parameter for the degradation
-units.Parameter('k_deg', 0.1)
-# Attach a frequency unit to k_deg.
-units.Unit(k_deg, '1/s')
+# defined with frequency (1/time) units - here, 
+# we chain Unit and Parameter definitions:
+Unit(Parameter('k_deg', 0.1), '1/s') 
+
 
 # Initial concentration(s)
-units.Initial(protein, protein_0)
+Initial(protein, protein_0)
+
 
 # Reaction rule(s)
-# Just the one degradation
-macros.degrade(protein, k_deg)
+# Just the one degradation - instead
+# of defining a Rule that encodes the degradation reaction
+# we can take advantage of degrade macro:
+macros.degrade(protein(), k_deg)
 
-# Additional unit checks.
+# Observables
+# Time-dependent protein concentration:
+Observable('protein_t', protein())
+
+# Expressions
+# The time-dependent degradation rate:
+Expression('deg_rate', (protein_t * k_deg))
+
+# Apply additional unit checks, including unit duplication
+# and unit consistency checking:
 units.check()
-
 
 ```
 
@@ -305,7 +294,7 @@ report any problems/bugs or make any comments, suggestions, or feature requests.
 If this package is useful in your work, please cite in any publications:
 
 ```
-Blake A. Wilson. (2024). pysb-units. (v0.1.0). https://github.com/Borealis-BioModeling/pysb-units
+Blake A. Wilson. (2024). pysb-units. (v0.2.0). https://github.com/Borealis-BioModeling/pysb-units
 ```
 
 -----
