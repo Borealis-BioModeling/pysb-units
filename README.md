@@ -31,9 +31,9 @@
 
 | **! Note** |
 | :--- |
-|  psyb-pkpd is still in version zero development so new versions may not be backwards compatible. |
+|  psyb-units is still in version zero development so new versions may not be backwards compatible. |
 
-**pysb-units** installs as the `pysb.pkpd` Python (namespace) package. It is has been developed with Python 3.11.3 and PySB 1.15.0.
+**pysb-units** installs as the `pysb.units` Python (namespace) package. It is has been developed with Python 3.11.3 and PySB 1.15.0.
 
 ### Dependencies
 
