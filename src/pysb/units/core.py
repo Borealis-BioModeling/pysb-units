@@ -161,7 +161,12 @@ class Observable(pysb.Observable):
         # units.
         if hasattr(SelfExporter.default_model, "simulation_units"):
             Unit(self, SelfExporter.default_model.simulation_units.concentration)
-
+            
+    def __repr__(self):
+        ret = super().__repr__()
+        if self.has_units:
+            ret += ", unit=[" + self.units.value + "]"
+        return ret
 
 class Initial(pysb.Initial):
 
