@@ -1,6 +1,7 @@
 """Defines the Unit object and drop-in replacements for other model components.
 """
 
+import weakref
 import warnings
 import sympy
 from pysb.core import SelfExporter
@@ -13,6 +14,7 @@ from pysb.units import unitdefs
 
 __all__ = [
     "Unit",
+    "SimulationUnits",
     "Model",
     "Parameter",
     "Expression",
@@ -154,6 +156,11 @@ class Observable(pysb.Observable):
         self.units = None
         self.has_units = False
         super().__init__(*args, **kwargs)
+        # If the global concentration units have been set with a SimulationUnits 
+        # object then we just infer the units of the observable as those concentration
+        # units.
+        if hasattr(SelfExporter.default_model, "simulation_units"):
+            Unit(self, SelfExporter.default_model.simulation_units.concentration)
 
 
 class Initial(pysb.Initial):
@@ -354,6 +361,88 @@ Annotation = pysb.Annotation
 #     pass
 
 
+class SimulationUnits(object):
+
+    def __init__(self, concentration: str = "uM", time: str = "s"):
+        try:
+            self._concentration_unit = u.Unit(concentration)
+        except:
+            raise UnknownUnitError(
+                "Unrecognizable concentration unit pattern '{}'".format(concentration)
+            )
+        if not unitdefs.is_concentration(self._concentration_unit):
+            msg = "Concentration unit pattern {} isn't a recognized concentration pattern.".format(
+                concentration
+            )
+            raise WrongUnitError(msg)
+        try:
+            self._time_unit = u.Unit(time)
+        except:
+            raise UnknownUnitError("Unrecognizable time unit pattern '{}'".format(time))
+        if not (self._time_unit.physical_type == "time"):
+            msg = (
+                "Time unit pattern {} isn't a recognized concentration pattern.".format(
+                    time
+                )
+            )
+            raise WrongUnitError(msg)
+        self._concentration = concentration
+        self._time = time
+        self._frequency_unit = self._time_unit ** (-1)
+        setattr(SelfExporter.default_model, "simulation_units", self)
+        self._model = weakref.ref(SelfExporter.default_model)
+        return
+    
+    def __repr__(self):
+        return "SimulationUnits(concentration=\'{}\', time=\'{}\')".format(self.concentration, self.time)
+
+    @property
+    def time(self):
+        return self._time
+
+    @property
+    def concentration(self):
+        return self._concentration
+
+    @property
+    def frequency(self):
+        return self._frequency_unit.to_string()
+
+    @property
+    def time_unit(self):
+        return self._time_unit
+
+    @property
+    def concentration_unit(self):
+        return self._concentration_unit
+
+    @property
+    def frequency_unit(self):
+        return self._frequency_unit
+
+    # def _update_all(self):
+    #     for unit in self._model.units:
+    #         astro_unit = unit.unit
+    #         bases = astro_unit.bases
+    #         powers = astro_unit.powers
+    #         new_unit = None
+    #         for base, power in zip(bases, powers):
+    #             if is_concentration(base):
+
+    def convert_unit(self, unit: u.Unit) -> u.Unit:
+        bases = unit.bases
+        powers = unit.powers
+        convert_to = u.Unit()
+        for base, power in zip(bases, powers):
+            if unitdefs.is_concentration(base):
+                convert_to *= self.concentration_unit**power
+            elif base.physical_type == "time":
+                convert_to *= self.time_unit**power
+            else:
+                convert_to *= base**power
+        return convert_to
+
+
 class ParameterUnit(pysb.Annotation):
     """Add unit annotation to Parameter components.
 
@@ -387,6 +476,7 @@ class ParameterUnit(pysb.Annotation):
                 "ParameterUnit can only be assigned to Parameter component."
             )
         self._unit_string = unit_string
+        self._param = parameter
         try:
             self._unit = u.Unit(unit_string)
             self._unit_string_parsed = self._unit.to_string()
@@ -394,30 +484,48 @@ class ParameterUnit(pysb.Annotation):
             raise UnknownUnitError(
                 "Unrecognizable unit pattern '{}'".format(unit_string)
             )
+        if hasattr(SelfExporter.default_model, "simulation_units"):
+            # Check for complex units that contain time or concentration parts
+            convert_unit = SelfExporter.default_model.simulation_units.convert_unit(
+                self._unit
+            )
+            convert = convert_unit.to_string()
         if convert is not None:
-            try:
-                unit_orig = self._unit
-                try:
-                    unit_new = u.Unit(convert)
-                except:
-                    raise UnknownUnitError(
-                        "Unrecognizable unit pattern '{}' for convert.".format(convert)
-                    )
-                conversion_factor = unit_orig.to(unit_new)
-                parameter.value *= conversion_factor
-                self._unit = unit_new
-                self._unit_string = convert
-                self._unit_string_parsed = unit_new.to_string()
-            except:
-                raise ValueError(
-                    "Unable to convert units {} to {}".format(unit_string, convert)
-                )
-        self._param = parameter
+            self.convert(convert)
         super().__init__(parameter, self._unit_string, predicate="units")
         self.name = "unit_" + parameter.name
         parameter.units = self
         parameter.has_units = True
         return
+
+    def convert(self, new_unit: str):
+        """Converts a the units.
+
+        Args:
+            new_unit (str): The new unit.
+
+        Raises:
+            UnknownUnitError: If new_unit can't be parsed into a recognized unit.
+            ValueError: If the original unit can't be converted into new_unit.
+        """
+        unit_string = self._unit_string
+        try:
+            unit_orig = self.unit
+            try:
+                unit_new = u.Unit(new_unit)
+            except:
+                raise UnknownUnitError(
+                    "Unrecognizable unit pattern '{}' for convert.".format(new_unit)
+                )
+            conversion_factor = unit_orig.to(unit_new)
+            self._param.value *= conversion_factor
+            self._unit = unit_new
+            self._unit_string = new_unit
+            self._unit_string_parsed = unit_new.to_string()
+        except:
+            raise ValueError(
+                "Unable to convert units {} to {}".format(unit_string, new_unit)
+            )
 
     @property
     def value(self) -> str:
@@ -619,6 +727,8 @@ def unitize() -> None:
 
     if "Unit" not in model_module_vars:
         model_module_vars["Unit"] = Unit
+    if "SimulationUnits" not in model_module_vars:
+        model_module_vars["SimulationUnits"] = SimulationUnits    
     return
 
 
@@ -679,9 +789,9 @@ def check(model: Model = None) -> None:
             phys_type = unit.physical_type
         if phys_type not in unit_types.keys():
             unit_types[phys_type] = list()
-            unit_types[phys_type].append(unit)
-        else:
-            unit_types[phys_type].append(unit)
+
+        unit_types[phys_type].append(unit)
+
     for key in unit_types.keys():
         unis = unit_types[key]
         n_unis = len(unis)
@@ -705,7 +815,7 @@ def check(model: Model = None) -> None:
                 )
                 sub_name_j = uni_j.subject.name
                 uni_j_str = uni_j.value
-                if not (uni_i == uni_j):
+                if not (uni_i.unit == uni_j.unit):
 
                     warnings.warn(
                         "Units '{}' for {} '{}' and '{}' for {} '{}' of unit-type '{}' do not match. \n Double-check units for consistency.".format(
