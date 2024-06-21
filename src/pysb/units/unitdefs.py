@@ -2,6 +2,8 @@
 """
 
 import astropy.units as u
+from astropy.constants import N_A
+import numpy as np
 
 __all__: list[str] = []  #  Units are added at the end
 
@@ -31,7 +33,7 @@ _exclude = [
 ## Define new custom units ##
 
 # Molar concentration (M)
-u.def_unit(
+molar = u.def_unit(
     "M",
     u.mole / u.L,
     namespace=_ns,
@@ -62,6 +64,28 @@ u.physical.def_physical_type((u.mol / u.m**2), "mole area density")
 # Ratio of g / s is unknown phyical type by default, so let's define here:
 u.physical.def_physical_type((u.g / u.s), "mass velocity")
 u.physical.def_physical_type(molec, "number of molecules")
+
+## Define new equivalencies for custom units ##
+
+# Molar concentration to molecules
+# Default volume for conversion is 1 L
+_vol = 1.0 * u.L
+equiv_molar_molecules = (molar, molec,
+                         lambda x: np.round(x * _vol.value *  N_A.value, 0),
+                         lambda x: x / (_vol.value * N_A.value)
+                         )
+u.set_enabled_equivalencies([equiv_molar_molecules])
+
+def set_molecule_volume(value = 1.0, unit = 'L'):
+    input_unit = u.Unit(unit)
+    vol_unit = "L"
+    _vol = value * input_unit.to(vol_unit) * u.Unit(vol_unit)
+    equiv_molar_molecules = (molar, molec,
+                         lambda x: np.round(x * _vol.value *  N_A.value, 0),
+                         lambda x: x / (_vol.value * N_A.value)
+                         )
+    u.set_enabled_equivalencies([equiv_molar_molecules])
+    return
 
 # Get a list of physical types that could be used
 # in defining concentrations.
