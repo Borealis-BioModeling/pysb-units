@@ -11,6 +11,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - `convert` function to `ParameterUnit`.
 - `core.molar_to_molecules` function that can convert a unit with a molar concentration to one with the number of molecules. 
 - `core.Unit` can accept `None` as an input in place of a unit string to explicity specify a unitless (i.e., dimensionless) quantity.
+- `core.Expression.compose_units` function. 
+- Custom equivalency in `unitdefs` for M to molecules with the `__init__.set_molecule_volume` and `unitdefs.set_molecule_volume` functions to allow the container volume used in the conversion to be updated by users. The `core.SimulationUnits` class can now handle auto conversions from molar concentrations to number of molecules for stochastic simulations. 
 
 ### Changed
 - Updated the Documentation and Usage section of the README to streamline it a bit and add in the new `SimulationUnits` object.
