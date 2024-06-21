@@ -7,6 +7,7 @@ import sympy
 from pysb.core import SelfExporter
 import pysb
 import astropy.units as u
+from astropy.constants import N_A
 from abc import ABC
 from pysb.units import unitdefs
 
@@ -161,7 +162,7 @@ class Observable(pysb.Observable):
         # units.
         if hasattr(SelfExporter.default_model, "simulation_units"):
             Unit(self, SelfExporter.default_model.simulation_units.concentration)
-            
+
     def __repr__(self):
         ret = super().__repr__()
         if self.has_units:
@@ -365,6 +366,33 @@ Annotation = pysb.Annotation
 # class UnitBase(ABC, pysb.Annotation):
 #     pass
 
+def molar_to_molecules(self, unit: u.Unit, vol: float = 1.0) -> tuple[float, u.Unit]: 
+    """Converts a unit with molar concentration to one with number of molecules.
+
+    Note: molecules = M * L * N_L
+    E.g.: M/s -> molecules/s
+    
+    Args:
+        unit (u.Unit): The unit.
+        vol (float, optional): Container volume in L for the conversion. Defaults to 1.0.
+
+    Returns:
+        tuple[float, u.Unit]: conversion factor, updated molecules unit 
+    """
+    # Check the unit as a composite for a molar concentration
+    # signature
+    if unit.physical_type == 'molar concentration':
+        return ((unit.to("M") * u.Unit("mol/L")) * vol * u.L * N_A).value, u.Unit("molecules")
+    # Break the unit apart and check piece 
+    bases = unit.bases
+    powers = unit.powers
+    convert_to = u.Unit()
+    for base, power in zip(bases, powers):
+        if base.physical_type == "molar concentration":
+            convert_to *= ((unit.to("M") * u.Unit("mol/L") * vol * u.L * N_A).value * u.Unit('moelcules'))**power
+        else:
+            convert_to *= base**power
+    return convert_to.value, convert_to.unit
 
 class SimulationUnits(object):
 
@@ -435,6 +463,11 @@ class SimulationUnits(object):
     #             if is_concentration(base):
 
     def convert_unit(self, unit: u.Unit) -> u.Unit:
+        # Check the unit as a composite for a concentration
+        # signature.
+        if unitdefs.is_concentration(unit):
+            return self.concentration_unit
+        # Break the unit apart and check piece 
         bases = unit.bases
         powers = unit.powers
         convert_to = u.Unit()
