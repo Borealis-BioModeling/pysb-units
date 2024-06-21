@@ -47,6 +47,9 @@ cell = u.def_unit("cell", namespace=_ns, doc="cell unit.")
 # alias for micrograms commonly used for pharmaceuticals.
 u.def_unit("mcg", u.ug, namespace=_ns, doc="alias for microgram (ug)")
 
+# Define a molecules unit, also useful for stochastic sims:
+molec = u.def_unit("molecules", namespace=_ns, doc='number of molecules')
+
 ## Define new custom physical types ##
 # Cell unit
 u.physical.def_physical_type(cell, "cell")
@@ -58,6 +61,7 @@ u.physical.def_physical_type(cell / u.s, "cellular reaction rate")
 u.physical.def_physical_type((u.mol / u.m**2), "mole area density")
 # Ratio of g / s is unknown phyical type by default, so let's define here:
 u.physical.def_physical_type((u.g / u.s), "mass velocity")
+u.physical.def_physical_type(molec, "number of molecules")
 
 # Get a list of physical types that could be used
 # in defining concentrations.
@@ -70,6 +74,7 @@ concentration_units = [
     u.mol / u.m**2,
     u.m**-3,
     u.m**-2,
+    molec,
 ]
 # Their physical types:
 concentration_phys_types = [unit.physical_type for unit in concentration_units]
@@ -84,6 +89,7 @@ rate_units = [
     u.m**-2 / u.s,
     u.m**-3 / u.s,
     cell**-1 * u.s**-1,
+    molec * u.s**-1,
 ]
 # Their physical types
 rate_phys_types = [unit.physical_type for unit in rate_units]
