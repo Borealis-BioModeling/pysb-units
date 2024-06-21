@@ -150,6 +150,8 @@ class Expression(pysb.Expression):
             obs_string = None
         return unit_string, obs_string
 
+    def compose_units(self):
+        return self._compose_units(self)
 
 class Observable(pysb.Observable):
 
@@ -157,7 +159,7 @@ class Observable(pysb.Observable):
         self.units = None
         self.has_units = False
         super().__init__(*args, **kwargs)
-        # If the global concentration units have been set with a SimulationUnits 
+        # If the global concentration units have been set with a SimulationUnits
         # object then we just infer the units of the observable as those concentration
         # units.
         if hasattr(SelfExporter.default_model, "simulation_units"):
@@ -168,6 +170,7 @@ class Observable(pysb.Observable):
         if self.has_units:
             ret += ", unit=[" + self.units.value + "]"
         return ret
+
 
 class Initial(pysb.Initial):
 
@@ -366,33 +369,40 @@ Annotation = pysb.Annotation
 # class UnitBase(ABC, pysb.Annotation):
 #     pass
 
-def molar_to_molecules(self, unit: u.Unit, vol: float = 1.0) -> tuple[float, u.Unit]: 
+
+def molar_to_molecules(self, unit: u.Unit, vol: float = 1.0) -> tuple[float, u.Unit]:
     """Converts a unit with molar concentration to one with number of molecules.
 
     Note: molecules = M * L * N_L
     E.g.: M/s -> molecules/s
-    
+
     Args:
         unit (u.Unit): The unit.
         vol (float, optional): Container volume in L for the conversion. Defaults to 1.0.
 
     Returns:
-        tuple[float, u.Unit]: conversion factor, updated molecules unit 
+        tuple[float, u.Unit]: conversion factor, updated molecules unit
     """
     # Check the unit as a composite for a molar concentration
     # signature
-    if unit.physical_type == 'molar concentration':
-        return ((unit.to("M") * u.Unit("mol/L")) * vol * u.L * N_A).value, u.Unit("molecules")
-    # Break the unit apart and check piece 
+    if unit.physical_type == "molar concentration":
+        return ((unit.to("M") * u.Unit("mol/L")) * vol * u.L * N_A).value, u.Unit(
+            "molecules"
+        )
+    # Break the unit apart and check piece
     bases = unit.bases
     powers = unit.powers
     convert_to = u.Unit()
     for base, power in zip(bases, powers):
         if base.physical_type == "molar concentration":
-            convert_to *= ((unit.to("M") * u.Unit("mol/L") * vol * u.L * N_A).value * u.Unit('moelcules'))**power
+            convert_to *= (
+                (unit.to("M") * u.Unit("mol/L") * vol * u.L * N_A).value
+                * u.Unit("moelcules")
+            ) ** power
         else:
             convert_to *= base**power
     return convert_to.value, convert_to.unit
+
 
 class SimulationUnits(object):
 
@@ -425,9 +435,11 @@ class SimulationUnits(object):
         setattr(SelfExporter.default_model, "simulation_units", self)
         self._model = weakref.ref(SelfExporter.default_model)
         return
-    
+
     def __repr__(self):
-        return "SimulationUnits(concentration=\'{}\', time=\'{}\')".format(self.concentration, self.time)
+        return "SimulationUnits(concentration='{}', time='{}')".format(
+            self.concentration, self.time
+        )
 
     @property
     def time(self):
@@ -467,7 +479,7 @@ class SimulationUnits(object):
         # signature.
         if unitdefs.is_concentration(unit):
             return self.concentration_unit
-        # Break the unit apart and check piece 
+        # Break the unit apart and check piece
         bases = unit.bases
         powers = unit.powers
         convert_to = u.Unit()
@@ -500,8 +512,8 @@ class ParameterUnit(pysb.Annotation):
 
         Args:
             parameter : The Parameter to which we want to add units.
-            unit_string : String representation of the units. If None, will be set 1 for 
-                dimensionless. 
+            unit_string : String representation of the units. If None, will be set 1 for
+                dimensionless.
             convert (optional): String representation of another unit to which we want to convert unit_string. Defaults to None.
 
         Raises:
@@ -573,6 +585,11 @@ class ParameterUnit(pysb.Annotation):
                 "Unable to convert units {} to {}".format(unit_string, new_unit)
             )
 
+    # TODO:
+    # Function that can change the unit assigned to a component.
+    def _change_unit(self, unit_string):
+        pass
+
     @property
     def value(self) -> str:
         """The string representation of the units."""
@@ -587,7 +604,7 @@ class ParameterUnit(pysb.Annotation):
         repr_string = super().__repr__()
         split = repr_string.split(",")
         # Check for dimensionless:
-        if split[1] == " \'1\'":
+        if split[1] == " '1'":
             return "%s,  None)" % (split[0])
         return "%s, %s)" % (split[0], split[1])
 
@@ -606,7 +623,12 @@ class ParameterUnit(pysb.Annotation):
 
 class ExpressionUnit(ParameterUnit):
 
-    def __init__(self, expression: Expression, unit_string: str | None, obs_pattern: str | None = None):
+    def __init__(
+        self,
+        expression: Expression,
+        unit_string: str | None,
+        obs_pattern: str | None = None,
+    ):
         if not isinstance(expression, Expression):
             raise ValueError(
                 "ExpressionUnit can only be assigned to Expression component."
@@ -686,7 +708,9 @@ class ObservableUnit(ParameterUnit):
 
 class Unit(ExpressionUnit, ObservableUnit, ParameterUnit):
 
-    def __init__(self, component, unit_string: str | None, convert=None, obs_pattern=None):
+    def __init__(
+        self, component, unit_string: str | None, convert=None, obs_pattern=None
+    ):
         if isinstance(component, Parameter):
             ParameterUnit.__init__(self, component, unit_string, convert=convert)
         elif isinstance(component, Expression):
@@ -779,7 +803,7 @@ def unitize() -> None:
     if "Unit" not in model_module_vars:
         model_module_vars["Unit"] = Unit
     if "SimulationUnits" not in model_module_vars:
-        model_module_vars["SimulationUnits"] = SimulationUnits    
+        model_module_vars["SimulationUnits"] = SimulationUnits
     return
 
 
