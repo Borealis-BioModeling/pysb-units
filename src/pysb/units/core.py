@@ -494,13 +494,14 @@ class ParameterUnit(pysb.Annotation):
     """
 
     def __init__(
-        self, parameter: Parameter, unit_string: str, convert: str | None = None
+        self, parameter: Parameter, unit_string: str | None, convert: str | None = None
     ):
         """
 
         Args:
             parameter : The Parameter to which we want to add units.
-            unit_string : String representation of the units.
+            unit_string : String representation of the units. If None, will be set 1 for 
+                dimensionless. 
             convert (optional): String representation of another unit to which we want to convert unit_string. Defaults to None.
 
         Raises:
@@ -513,6 +514,7 @@ class ParameterUnit(pysb.Annotation):
             raise ValueError(
                 "ParameterUnit can only be assigned to Parameter component."
             )
+        unit_string = self._check_dimensionless(unit_string)
         self._unit_string = unit_string
         self._param = parameter
         try:
@@ -535,6 +537,12 @@ class ParameterUnit(pysb.Annotation):
         parameter.units = self
         parameter.has_units = True
         return
+
+    @staticmethod
+    def _check_dimensionless(unit_string):
+        if unit_string is None:
+            return "1"
+        return unit_string
 
     def convert(self, new_unit: str):
         """Converts a the units.
@@ -578,6 +586,9 @@ class ParameterUnit(pysb.Annotation):
     def __repr__(self):
         repr_string = super().__repr__()
         split = repr_string.split(",")
+        # Check for dimensionless:
+        if split[1] == " \'1\'":
+            return "%s,  None)" % (split[0])
         return "%s, %s)" % (split[0], split[1])
 
     @property
@@ -595,11 +606,12 @@ class ParameterUnit(pysb.Annotation):
 
 class ExpressionUnit(ParameterUnit):
 
-    def __init__(self, expression, unit_string, obs_pattern=None):
+    def __init__(self, expression: Expression, unit_string: str | None, obs_pattern: str | None = None):
         if not isinstance(expression, Expression):
             raise ValueError(
                 "ExpressionUnit can only be assigned to Expression component."
             )
+        unit_string = self._check_dimensionless(unit_string)
         self._unit_string = unit_string
         try:
             self._unit = u.Unit(unit_string)
@@ -624,11 +636,12 @@ class ExpressionUnit(ParameterUnit):
 
 class ObservableUnit(ParameterUnit):
 
-    def __init__(self, observable, unit_string, convert=None):
+    def __init__(self, observable, unit_string: str | None, convert=None):
         if not isinstance(observable, Observable):
             raise ValueError(
                 "ObservableUnit can only be assigned to Observable component."
             )
+        unit_string = self._check_dimensionless(unit_string)
         self._unit_string = unit_string
         try:
             self._unit = u.Unit(unit_string)
@@ -673,7 +686,7 @@ class ObservableUnit(ParameterUnit):
 
 class Unit(ExpressionUnit, ObservableUnit, ParameterUnit):
 
-    def __init__(self, component, unit_string, convert=None, obs_pattern=None):
+    def __init__(self, component, unit_string: str | None, convert=None, obs_pattern=None):
         if isinstance(component, Parameter):
             ParameterUnit.__init__(self, component, unit_string, convert=convert)
         elif isinstance(component, Expression):

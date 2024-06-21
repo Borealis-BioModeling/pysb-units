@@ -10,9 +10,11 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - `core.SimulationUnits` class that allows users to define global model units for concentration and time with auto conversion of parameters defined with relevant units. This included some additional logic in the `ParameterUnit.__init__` to check for an instance of `SimulationUnits` in the model and convert the units automatically as needed. Also a check in the `units.Observable` that auto assigns a unit based on `SimulationUnits`. 
 - `convert` function to `ParameterUnit`.
 - `core.molar_to_molecules` function that can convert a unit with a molar concentration to one with the number of molecules. 
+- `core.Unit` can accept `None` as an input in place of a unit string to explicity specify a unitless (i.e., dimensionless) quantity.
 
 ### Changed
 - Updated the Documentation and Usage section of the README to streamline it a bit and add in the new `SimulationUnits` object.
+
 
 ### Fixed
 - Error related to the definition of the cellular reaction rate physical type in `unitdefs`.
