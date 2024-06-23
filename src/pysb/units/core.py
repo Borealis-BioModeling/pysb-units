@@ -1,4 +1,4 @@
-"""Defines the Unit object and drop-in replacements for other model components.
+"""Defines the Unit and SimulationUnits objects along with drop-in replacements for other model components.
 """
 
 import weakref
@@ -41,9 +41,29 @@ except:
 
 
 class Model(pysb.Model):
+    """PySB model with additiional units features.
+
+    This object is a subclass of pysb.core.Model that adds three new
+    properties to the Model object that help with managing units defined in the
+    the models.
+
+    Added Properties:
+        units (list) - a list of pysb.units.Unit objects defined for the given
+            model.
+        unit_map (dict) - a dictionary of unit strings keyed to the name of their
+            respective model components.
+        reaction_order (list(list)) - a list of model Rules and the corresponding
+            reaction orders of their forward and reverse reactions: items are
+            [Rule, Order of Forward Reaction, Order of Reverse Reaction].
+
+    pysb.core.Model:
+    """
+
+    __doc__ += pysb.Model.__doc__
 
     @property
-    def units(self):
+    def units(self) -> list:
+        """List of Unit objects defined for this model."""
         unit_list = []
         for annotation in self.annotations:
             if isinstance(annotation, Unit):
@@ -51,7 +71,8 @@ class Model(pysb.Model):
         return unit_list
 
     @property
-    def unit_map(self):
+    def unit_map(self) -> dict:
+        """Dictionary of model components (by name) with associated units."""
         unit_dict = dict()
         for annotation in self.annotations:
             if isinstance(annotation, Unit):
@@ -59,7 +80,8 @@ class Model(pysb.Model):
         return unit_dict
 
     @property
-    def reaction_order(self):
+    def reaction_order(self) -> list:
+        """List of model rules and their forward and reverse reaction orders."""
         orders = list()
         for rule in self.rules:
             order_forward = len(rule.reactant_pattern.complex_patterns)
@@ -72,14 +94,59 @@ class Model(pysb.Model):
 
 
 class Parameter(pysb.Parameter):
+    """PySB model parameter component with additiional units features.
 
-    def __init__(self, name, value=0.0, _export=True, nonnegative=True, integer=False):
+    This object is a subclass of pysb.core.Parameter. It adds two new attributes and one new
+    property to the Parameter component that help with managing units defined in the
+    the models, as well as updating the initialization and string representations of the
+    Parameter component.
+
+    Added Attributes:
+        units (pysb.units.Unit) - The associated Unit object. Defaults to None.
+        has_units (bool) - Does the parameter have units. Defaults to False.
+
+    Added Properties:
+        unit (list) - a list of pysb.units.Unit objects defined for the given
+            model.
+        unit_map (dict) - a dictionary of unit strings keyed to the name of their
+            respective model components.
+        reaction_order (list(list)) - a list of model Rules and the corresponding
+            reaction orders of their forward and reverse reactions: items are
+            [Rule, Order of Forward Reaction, Order of Reverse Reaction].
+
+    """
+
+   # __doc__ += pysb.Parameter.__doc__
+
+    def __init__(
+        self,
+        name: str,
+        value: float = 0.0,
+        _export: bool = True,
+        nonnegative: bool = True,
+        integer: bool = False,
+    ):
+        """Initialize a the Parameter component.
+
+        Uses super to call the pysb.core.Parameter initialization and then sets
+        the units and has_units attributes to default values (None, False).
+
+        Args:
+            name (str): Name of the parameter.
+            value (float, optional): Numeric value of the parameter. Defaults to 0.0.
+            _export (bool, optional): Should the componenet be exported. Defaults to True.
+            nonnegative (bool, optional): Is the parameter value nonnegative. Defaults to True.
+            integer (bool, optional): Is the parameter value an integer. Defaults to False.
+
+        """
+
         super().__init__(name, value, _export, nonnegative, integer)
         self.units = None
         self.has_units = False
         return
 
     def __repr__(self):
+        """Updated representation that displays any assigned units."""
         if self.has_units:
             return "%s(%s, %s), unit=[%s]" % (
                 self.__class__.__name__,
@@ -92,6 +159,7 @@ class Parameter(pysb.Parameter):
 
     @property
     def unit(self):
+        """Associated astropy.units.Unit object."""
         return self.units.unit
 
 
@@ -118,7 +186,7 @@ class Expression(pysb.Expression):
 
     @staticmethod
     def _compose_units(expr):
-        """Return expr rewritten in terms of terminal symbols only."""
+        """Composes the units of an expression from constituent components."""
         subs = []
         subs_uni = []
         subs_obs = []
@@ -152,6 +220,7 @@ class Expression(pysb.Expression):
 
     def compose_units(self):
         return self._compose_units(self)
+
 
 class Observable(pysb.Observable):
 
