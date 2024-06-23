@@ -97,9 +97,10 @@ The key features of `pysb-units` are a new `Unit` object derived from pysb annot
 __pysb-units__ introduces two new objects for defining and managing units in a pysb model. They are:
 
  * `Unit(component, 'unit')`- assigns a particular unit value to a model component such as Parameter or Observable. E.g., to assign a frequency unit to a rate constant parameter (as a single line): `Unit(Parameter('k_f', 1e-1), '1/s')`. This object is derived from pysb's `Annotation` object but leverages the `astropy.units` library for unit management.
+    * You can explicity define dimensionless quantities by passing `None` for the input units: e.g., `Unit(scaling_factor, None)`.
  * `SimulationUnits(concentration='concentration_unit', time='time_unit')` - sets the concentration and time units that are to be used in simulations. E.g., to set the use of nM concentrations and time in seconds: `SimulationUnits(concentration='nM', time='s')`. Note that when this object is defined it will enforce conversion of all concentration and time units to the specified units.
    * Supports stochastic simulation units with `concentration='molecules'`; it uses a unit conversion based on the equation `molecules = [molar concentraion] * volume * N_A`, where N_A is Avogadro's number. 
-   * To define the appropriate volume for the conversion a call to the `pysb.units.set_molecule_volume(value[float], unit[str])` can be added before or just after the `SimulationUnits` initialization. E.g., `pysb.units.set_molecule_volume(1.6, 'pL')` would set a volume of 1.6 pL for the conversion used by `SimulationUnits` to go from molar concentrations to number of molecules.  
+   * To define the appropriate volume for the conversion a call to the `pysb.units.set_molecule_volume(value[float], unit[str])` can be added before or just after the `SimulationUnits` initialization. E.g., `pysb.units.set_molecule_volume(1.6, 'pL')` would set a volume of 1.6 pL for the conversion used by `SimulationUnits` to go from molar concentrations to number of molecules. **Note** that these conversions currently only work properly for non-compartmental models. 
 
  Additionally, __pysb-units__ defines drop-in replacements for core model components, including `Model`, `Parameter`, `Expression`, `Rule`, `Initial`, and `Observable` that are integrated with new units-based features. `pysb-units` defines a couple of useful utility functions, including the `unitize` and `check` functions, which make it easier to add units to model and run additional unit checks (such as unit consistency).
 
@@ -280,7 +281,7 @@ units.check()
 
 ## Stochastic Simulation Units
 
-`pysb-units` supports stochastic simulation units (number of molecules in place of a molar concentration) at the level of model definition via a the `set_molecule_volume` function and the `SimulationUnits` object. To enforce automatic conversion from molar concentrations to number of molecules we can update our example model as follows:
+`pysb-units` supports stochastic simulation units (number of molecules in place of a molar concentration) at the level of model definition via the `set_molecule_volume` function and the `SimulationUnits` object. To enforce automatic conversion from molar concentrations to number of molecules we can update our example model as follows:
 
 ```python
 # Import the pysb components we need:
@@ -347,13 +348,15 @@ units.check()
 
 Now, when `Unit(protein_0, 'uM)` is evaluated the concentration of 500 micromolar will be automatically converted to the number of molecules ('molecules' unit).
 
+Note that at the moment, this approach only works for non-compartmental models.
+
 ## Custom Units
 
 `pysb.units` leverages the `astropy.units` package for unit parsing and as its physical units library, but adds the following custom units/unit-types for reaction model use:
 
  * "M" = molar concentration : an alias for mole / L. Includes all fraction orders from femto to milli.
  * "molecules" - number of molecules : useful for stochastic simulations.
- * "1/cell" = number per cell : useful for stochastic simulations.
+ * "1/cell" = number per cell : useful for stochastic simulations of cell signaling networks.
  * "1 / (cell**-1 * s)" = cellular reaction rate : reaction rate corresponding to concentrations in number per cell  
  * "mcg" = micrograms : alias for "ug", often used in pharmaceuticals.
  * "mole / m**2" = mole area density 
