@@ -864,13 +864,15 @@ class Unit(ExpressionUnit, ObservableUnit, ParameterUnit):
         """_summary_
 
         Args:
-            component (Parameter | Expression | Observable): _description_
-            unit_string (str | None): _description_
-            convert (_type_, optional): _description_. Defaults to None.
-            obs_pattern (_type_, optional): _description_. Defaults to None.
+            component (Parameter | Expression | Observable): The component to which units are being added.
+            unit_string (str | None): The unit.
+            convert (_type_, optional): Another unit to which we want to convert. 
+                Defaults to None. Ignored when SimulationUnits has been defined.
+            obs_pattern (_type_, optional): Pattern of observables in an
+                expression. Defaults to None.
 
         Raises:
-            ValueError: _description_
+            ValueError: If the input model component is unsupported.
         """
 
         if isinstance(component, Parameter):
@@ -970,11 +972,11 @@ def unitize() -> None:
 
 
 def check(model: Model = None) -> None:
-    """Check for inconsistent or missing units.
+    """Check for duplicate, inconsistent, and missing units.
 
     Args:
         model (optional): The model to check. Defaults to None.
-         If None, it use PySB's SelfExporter to set the current model
+         If None, PySB's SelfExporter is used to set the current model
          in the calling namespace.
     """
     if model is None:
