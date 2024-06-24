@@ -116,7 +116,7 @@ class Parameter(pysb.Parameter):
 
     """
 
-   # __doc__ += pysb.Parameter.__doc__
+    # __doc__ += pysb.Parameter.__doc__
 
     def __init__(
         self,
@@ -164,8 +164,33 @@ class Parameter(pysb.Parameter):
 
 
 class Expression(pysb.Expression):
+    """PySB model expression component with additiional units features.
+
+    This object is a subclass of pysb.core.Expression.
+
+    Overloads:
+        __init__
+        __repr__
+
+    Added Attributes:
+        units (pysb.units.Unit) - The associated Unit object.
+        has_units (bool) - Does the expression have units. Defaults to False.
+
+    """
 
     def __init__(self, name, expr, _export=True):
+        """Initialize the Expression component.
+
+        Uses super to call the pysb.core.Expression initialization and then sets
+        the units and has_units attributes to default values (None, False) before
+        initializing a new Unit object that will alter their values.
+
+        Args:
+            name (str): Name of the expression.
+            expr (sympy expression): The corresponding expression. Defaults to 0.0.
+            _export (bool, optional): Should the componenet be exported. Defaults to True.
+        """
+
         unit_string, obs_pattern = self._compose_units(expr)
         # print(unit_string, obs_string)
         super().__init__(name, expr, _export=_export)
@@ -175,6 +200,7 @@ class Expression(pysb.Expression):
         return
 
     def __repr__(self):
+        """Updated representation that displays any assigned units."""
         base_repr = super().__repr__()
         if self.has_units:
             unit_repr = base_repr + ", unit=[{}]".format(self.units.value)
@@ -219,6 +245,7 @@ class Expression(pysb.Expression):
         return unit_string, obs_string
 
     def compose_units(self):
+        """Retuns the composed units of an expression from its constituent components."""
         return self._compose_units(self)
 
 
@@ -474,8 +501,33 @@ def molar_to_molecules(self, unit: u.Unit, vol: float = 1.0) -> tuple[float, u.U
 
 
 class SimulationUnits(object):
+    """Primary model units used for simulations.
+
+    Properties (read-only):
+        time (str) - string representation of the time unit.
+        concentration (str) - string representation of the concentration unit.
+        frequency (str) - string representation of the frequency unit (1/time).
+        time_unit (astropy.units.Unit) - The corresponding astropy Unit object
+            for the time unit.
+        concentration_unit (astropy.units.Unit) - The corresponding astropy Unit
+            object for the concentration unit.
+        frequency_unit (astropy.units.Unit) - The corresponding astropy Unit object
+            for the frequency unit (1/time).
+    """
 
     def __init__(self, concentration: str = "uM", time: str = "s"):
+        """Initializes the SimulationUnits object with input concentration and time units.
+
+        Args:
+            concentration (str, optional): The concentration unit. Defaults to "uM".
+            time (str, optional): The time unit. Defaults to "s".
+
+        Raises:
+            UnknownUnitError: If concentration can't be parsed into a recognizable unit.
+            WrongUnitError: If concentration unit isn't recognized as a concentration pattern.
+            UnknownUnitError: If time can't be parsed into a recognizable unit.
+            WrongUnitError: If time isn't recognized as a physical type of time.
+        """
         try:
             self._concentration_unit = u.Unit(concentration)
         except:
@@ -483,7 +535,7 @@ class SimulationUnits(object):
                 "Unrecognizable concentration unit pattern '{}'".format(concentration)
             )
         if not unitdefs.is_concentration(self._concentration_unit):
-            msg = "Concentration unit pattern {} isn't a recognized concentration pattern.".format(
+            msg = "Concentration unit pattern '{}' isn't a recognized concentration pattern.".format(
                 concentration
             )
             raise WrongUnitError(msg)
@@ -492,11 +544,7 @@ class SimulationUnits(object):
         except:
             raise UnknownUnitError("Unrecognizable time unit pattern '{}'".format(time))
         if not (self._time_unit.physical_type == "time"):
-            msg = (
-                "Time unit pattern {} isn't a recognized concentration pattern.".format(
-                    time
-                )
-            )
+            msg = "Time unit pattern '{}' isn't a recognized time pattern.".format(time)
             raise WrongUnitError(msg)
         self._concentration = concentration
         self._time = time
@@ -505,33 +553,39 @@ class SimulationUnits(object):
         self._model = weakref.ref(SelfExporter.default_model)
         return
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return "SimulationUnits(concentration='{}', time='{}')".format(
             self.concentration, self.time
         )
 
     @property
-    def time(self):
+    def time(self) -> str:
+        """The time unit as a string."""
         return self._time
 
     @property
-    def concentration(self):
+    def concentration(self) -> str:
+        """The concentration unit as a string."""
         return self._concentration
 
     @property
-    def frequency(self):
+    def frequency(self) -> str:
+        """The frequency (1/time) unit as a string"""
         return self._frequency_unit.to_string()
 
     @property
-    def time_unit(self):
+    def time_unit(self) -> u.Unit:
+        """The astropy.units.Unit representation of the time unit."""
         return self._time_unit
 
     @property
-    def concentration_unit(self):
+    def concentration_unit(self) -> u.Unit:
+        """The astropy.units.Unit representation of the concentration unit."""
         return self._concentration_unit
 
     @property
-    def frequency_unit(self):
+    def frequency_unit(self) -> u.Unit:
+        """The astropy.units.Unit representation of the frequency (1/time) unit."""
         return self._frequency_unit
 
     # def _update_all(self):
@@ -544,6 +598,14 @@ class SimulationUnits(object):
     #             if is_concentration(base):
 
     def convert_unit(self, unit: u.Unit) -> u.Unit:
+        """Creates a new unit object with concentration and time units replaced with their pre-defined units.
+
+        Args:
+            unit (u.Unit): The input Unit object.
+
+        Returns:
+            u.Unit: What the input object is converted to.
+        """
         # Check the unit as a composite for a concentration
         # signature.
         if unitdefs.is_concentration(unit):
@@ -560,6 +622,14 @@ class SimulationUnits(object):
             else:
                 convert_to *= base**power
         return convert_to
+
+
+# TODO: Refactor the Unit classes.
+# Create a base class for the ParameterUnit, ExpressionUnit, and ObservableUnit objects,
+# so that ParameterUnit doesn't need to be used as the base for ExpressionUnit and ObservableUnit.
+# Taking advantage of the Annotation attributes for subject and object should allow some
+# streamlining and removal of the specific privates like ParameterUnit._param and
+# ExpressionUnit._expr.
 
 
 class ParameterUnit(pysb.Annotation):
@@ -776,10 +846,33 @@ class ObservableUnit(ParameterUnit):
 
 
 class Unit(ExpressionUnit, ObservableUnit, ParameterUnit):
+    """Unit object used to assign units to pysb model components.
+
+    Unit can be assigned to Parameter, Expression, and Observable model components.
+    However, end users should typically only apply units to Parameter components.
+
+    Subclass of ExpressionUnit, ObservableUnit, and ParameterUnit.
+    """
 
     def __init__(
-        self, component, unit_string: str | None, convert=None, obs_pattern=None
+        self,
+        component: Parameter | Expression | Observable,
+        unit_string: str | None,
+        convert=None,
+        obs_pattern=None,
     ):
+        """_summary_
+
+        Args:
+            component (Parameter | Expression | Observable): _description_
+            unit_string (str | None): _description_
+            convert (_type_, optional): _description_. Defaults to None.
+            obs_pattern (_type_, optional): _description_. Defaults to None.
+
+        Raises:
+            ValueError: _description_
+        """
+
         if isinstance(component, Parameter):
             ParameterUnit.__init__(self, component, unit_string, convert=convert)
         elif isinstance(component, Expression):
