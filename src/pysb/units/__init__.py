@@ -13,4 +13,4 @@ def set_molecule_volume(value: float, unit: str) -> None:
     return
 
 
-__version__ = '0.2.0'
+__version__ = '0.3.0'
