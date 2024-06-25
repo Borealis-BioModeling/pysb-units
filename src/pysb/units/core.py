@@ -3,6 +3,7 @@
 
 import weakref
 import warnings
+from contextlib import contextmanager
 import sympy
 from pysb.core import SelfExporter
 import pysb
@@ -14,6 +15,7 @@ from pysb.units import unitdefs
 # Define __all__
 
 __all__ = [
+    "units",
     "Unit",
     "SimulationUnits",
     "Model",
@@ -466,6 +468,36 @@ Annotation = pysb.Annotation
 #     pass
 
 
+@contextmanager
+def units():
+    """Context manager for units."""
+    try:
+        import inspect
+
+        frame = inspect.currentframe()
+        model_module_vars = frame.f_back.f_back.f_locals
+        units_vars = globals()
+        components_replace = [
+            "Rule",
+            "Parameter",
+            "Expression",
+            "Model",
+            "Observable",
+            "Initial",
+        ]
+        for component in components_replace:
+            model_module_vars[component] = units_vars[component]
+
+        if "Unit" not in model_module_vars:
+            model_module_vars["Unit"] = Unit
+        if "SimulationUnits" not in model_module_vars:
+            model_module_vars["SimulationUnits"] = SimulationUnits
+        yield
+
+    finally:
+        check()
+
+
 def molar_to_molecules(self, unit: u.Unit, vol: float = 1.0) -> tuple[float, u.Unit]:
     """Converts a unit with molar concentration to one with number of molecules.
 
@@ -866,7 +898,7 @@ class Unit(ExpressionUnit, ObservableUnit, ParameterUnit):
         Args:
             component (Parameter | Expression | Observable): The component to which units are being added.
             unit_string (str | None): The unit.
-            convert (_type_, optional): Another unit to which we want to convert. 
+            convert (_type_, optional): Another unit to which we want to convert.
                 Defaults to None. Ignored when SimulationUnits has been defined.
             obs_pattern (_type_, optional): Pattern of observables in an
                 expression. Defaults to None.
