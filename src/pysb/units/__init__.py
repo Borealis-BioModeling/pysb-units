@@ -8,9 +8,5 @@ try:
 except:
     pass
 
-def set_molecule_volume(value: float, unit: str) -> None:
-    unitdefs.set_molecule_volume(value, unit)
-    return
-
 
 __version__ = '0.3.0'
