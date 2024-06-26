@@ -472,26 +472,11 @@ Annotation = pysb.Annotation
 def units():
     """Context manager for units."""
     try:
-        import inspect
-
-        frame = inspect.currentframe()
-        model_module_vars = frame.f_back.f_back.f_locals
-        units_vars = globals()
-        components_replace = [
-            "Rule",
-            "Parameter",
-            "Expression",
-            "Model",
-            "Observable",
-            "Initial",
-        ]
-        for component in components_replace:
-            model_module_vars[component] = units_vars[component]
-
-        if "Unit" not in model_module_vars:
-            model_module_vars["Unit"] = Unit
-        if "SimulationUnits" not in model_module_vars:
-            model_module_vars["SimulationUnits"] = SimulationUnits
+        # Requires depth of 3
+        # 1 - back is inside try
+        # 2 - back is in the units function
+        # 3 - back is in the model namespace
+        unitize(depth=3)
         yield
 
     finally:
@@ -977,12 +962,24 @@ def add_macro_units(macro_module):
     return
 
 
-def unitize() -> None:
-    """Monkey patches the model definition modules namespace and replaces model components with their units versions."""
+def unitize(depth: int = 1) -> None:
+    """Monkey patches the model definition modules namespace and replaces model components with their units versions.
+
+    Args:
+        depth (int, optional): The number of frames back to get to the model namespace. Defaults to 1.
+            Maximum supported depth is 3.
+    """
     import inspect
 
     frame = inspect.currentframe()
-    model_module_vars = frame.f_back.f_locals
+    if depth > 3:
+        depth = 3
+    if depth == 2:
+        model_module_vars = frame.f_back.f_back.f_locals
+    elif depth == 3:
+        model_module_vars = frame.f_back.f_back.f_back.f_locals
+    else:
+        model_module_vars = frame.f_back.f_locals
     units_vars = globals()
     components_replace = [
         "Rule",
