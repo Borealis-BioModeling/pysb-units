@@ -31,6 +31,7 @@ __all__ = [
     "Annotation",
     "check",
     "unitize",
+    "set_molecule_volume",
 ]
 
 # Enable the custom units if not already enabled.
@@ -120,10 +121,18 @@ class Parameter(pysb.Parameter):
 
     # __doc__ += pysb.Parameter.__doc__
 
+    def __new__(
+        cls, name, value=0.0, unit=None, _export=True, nonnegative=True, integer=False
+    ):
+        return super(pysb.Parameter, cls).__new__(
+            cls, name, real=True, nonnegative=nonnegative, integer=integer
+        )
+
     def __init__(
         self,
         name: str,
         value: float = 0.0,
+        unit: str | None = None,
         _export: bool = True,
         nonnegative: bool = True,
         integer: bool = False,
@@ -145,6 +154,8 @@ class Parameter(pysb.Parameter):
         super().__init__(name, value, _export, nonnegative, integer)
         self.units = None
         self.has_units = False
+        if unit is not None:
+            Unit(self, unit)
         return
 
     def __repr__(self):
@@ -692,7 +703,7 @@ class ParameterUnit(pysb.Annotation):
             raise UnknownUnitError(
                 "Unrecognizable unit pattern '{}'".format(unit_string)
             )
-        if hasattr(SelfExporter.default_model, "simulation_units"):
+        if hasattr(SelfExporter.default_model, "simulation_units") and (unit_string != "1"):
             # Check for complex units that contain time or concentration parts
             convert_unit = SelfExporter.default_model.simulation_units.convert_unit(
                 self._unit
@@ -709,7 +720,7 @@ class ParameterUnit(pysb.Annotation):
     @staticmethod
     def _check_dimensionless(unit_string):
         if unit_string is None:
-            return "1"
+            unit_string =  "1"
         return unit_string
 
     def convert(self, new_unit: str):
@@ -731,13 +742,34 @@ class ParameterUnit(pysb.Annotation):
                 raise UnknownUnitError(
                     "Unrecognizable unit pattern '{}' for convert.".format(new_unit)
                 )
-            conversion_factor = unit_orig.to(unit_new)
+            try:
+                # Try a direct conversion
+                conversion_factor = unit_orig.to(unit_new)
+            except:
+                try:
+                    # Failed, now try breaking them apart and do piece by piece
+                    # This should work for cases where we need to convert molar
+                    # concentrations to molecules in complex unit patterns.
+                    bases = unit_orig.bases
+                    powers = unit_orig.powers
+                    bases_new = unit_new.bases
+                    powers_new = unit_new.powers
+                    conversion_factor = 1.0
+                    n_parts = len(bases)
+
+                    for i in range(n_parts):
+                        conversion_factor *= (bases[i].to(bases_new[i])) ** powers[i]
+                except:
+                    raise UnitConversionError(
+                        "Unable to convert units {} to {}".format(unit_string, new_unit)
+                    )
+
             self._param.value *= conversion_factor
             self._unit = unit_new
             self._unit_string = new_unit
             self._unit_string_parsed = unit_new.to_string()
         except:
-            raise ValueError(
+            raise UnitConversionError(
                 "Unable to convert units {} to {}".format(unit_string, new_unit)
             )
 
@@ -747,9 +779,12 @@ class ParameterUnit(pysb.Annotation):
         pass
 
     @property
-    def value(self) -> str:
+    def value(self) -> str | None:
         """The string representation of the units."""
-        return self._unit_string
+        if self._unit_string == "1":
+            return None
+        else:
+            return self._unit_string
 
     @property
     def unit(self) -> u.Unit:
@@ -759,6 +794,7 @@ class ParameterUnit(pysb.Annotation):
     def __repr__(self):
         repr_string = super().__repr__()
         split = repr_string.split(",")
+        print(split)
         # Check for dimensionless:
         if split[1] == " '1'":
             return "%s,  None)" % (split[0])
@@ -842,7 +878,7 @@ class ObservableUnit(ParameterUnit):
                 self._unit_string = convert
                 self._unit_string_parsed = unit_new.to_string()
             except:
-                raise ValueError(
+                raise UnitConversionError(
                     "Unable to convert units {} to {}".format(unit_string, convert)
                 )
             is_conc_unit = unitdefs.is_concentration(self._unit)
@@ -997,6 +1033,8 @@ def unitize(depth: int = 1) -> None:
         model_module_vars["Unit"] = Unit
     if "SimulationUnits" not in model_module_vars:
         model_module_vars["SimulationUnits"] = SimulationUnits
+    if "set_molecule_volume" not in model_module_vars:
+        model_module_vars["set_molecule_volume"] = set_molecule_volume
     return
 
 
@@ -1119,6 +1157,11 @@ def rule_orders():
     return
 
 
+def set_molecule_volume(value: float, unit: str) -> None:
+    unitdefs.set_molecule_volume(value, unit)
+    return
+
+
 # Error Classes
 
 
@@ -1142,6 +1185,12 @@ class WrongUnitError(ValueError):
 
 class DuplicateUnitError(ValueError):
     """A component already has units."""
+
+    pass
+
+
+class UnitConversionError(ValueError):
+    """Unable to convert between two different units."""
 
     pass
 
