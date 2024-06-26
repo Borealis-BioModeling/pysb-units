@@ -74,7 +74,11 @@ equiv_molar_molecules = (molar, molec,
                          lambda x: np.round(x * _vol.value *  N_A.value, 0),
                          lambda x: x / (_vol.value * N_A.value)
                          )
-u.set_enabled_equivalencies([equiv_molar_molecules])
+equiv_molari_moleculesi = (molar**-1, molec**-1,
+                         lambda x: np.round(x / (_vol.value *  N_A.value), 0),
+                         lambda x: x * (_vol.value * N_A.value)
+                         )
+u.set_enabled_equivalencies([equiv_molar_molecules, equiv_molari_moleculesi])
 
 def set_molecule_volume(value = 1.0, unit = 'L'):
     input_unit = u.Unit(unit)
@@ -84,7 +88,11 @@ def set_molecule_volume(value = 1.0, unit = 'L'):
                          lambda x: np.round(x * _vol.value *  N_A.value, 0),
                          lambda x: x / (_vol.value * N_A.value)
                          )
-    u.set_enabled_equivalencies([equiv_molar_molecules])
+    equiv_molari_moleculesi = (molar**-1, molec**-1,
+                         lambda x: np.round(x / (_vol.value *  N_A.value), 0),
+                         lambda x: x * (_vol.value * N_A.value)
+                         )
+    u.set_enabled_equivalencies([equiv_molar_molecules, equiv_molari_moleculesi])
     return
 
 # Get a list of physical types that could be used
