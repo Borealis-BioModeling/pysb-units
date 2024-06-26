@@ -98,6 +98,7 @@ __pysb-units__ introduces two new objects for defining and managing units in a p
 
  * `Unit(component, 'unit')`- assigns a particular unit value to a model component such as Parameter or Observable. E.g., to assign a frequency unit to a rate constant parameter (as a single line): `Unit(Parameter('k_f', 1e-1), '1/s')`. This object is derived from pysb's `Annotation` object but leverages the `astropy.units` library for unit management.
     * You can explicity define dimensionless quantities by passing `None` for the input units: e.g., `Unit(scaling_factor, None)`.
+    `Parameter`s accept an optional keyword `unit` that can be used to assign a `Unit` that parameter automatically with needing to explicity attach the `Unit` object.
  * `SimulationUnits(concentration='concentration_unit', time='time_unit')` - sets the concentration and time units that are to be used in simulations. E.g., to set the use of nM concentrations and time in seconds: `SimulationUnits(concentration='nM', time='s')`. Note that when this object is defined it will enforce conversion of all concentration and time units to the specified units.
    * Supports stochastic simulation units with `concentration='molecules'`; it uses a unit conversion based on the equation `molecules = [molar concentraion] * volume * N_A`, where N_A is Avogadro's number. 
    * To define the appropriate volume for the conversion a call to the `pysb.units.set_molecule_volume(value[float], unit[str])` can be added before or just after the `SimulationUnits` initialization. E.g., `pysb.units.set_molecule_volume(1.6, 'pL')` would set a volume of 1.6 pL for the conversion used by `SimulationUnits` to go from molar concentrations to number of molecules. **Note** that these conversions currently only work properly for non-compartmental models. 
@@ -108,6 +109,9 @@ __pysb-units__ introduces two new objects for defining and managing units in a p
 ### Example
 
 A simple model with one degradation reaction:
+
+
+
 
 * Regular pysb:
 ```python
@@ -407,6 +411,41 @@ units.check()
 Now, when `Unit(protein_0, 'uM)` is evaluated the concentration of 500 micromolar will be automatically converted to the number of molecules ('molecules' unit).
 
 Note that at the moment, this approach only works for non-compartmental models.
+
+## unit keyword for Parameter
+
+The `Parameter` component can accept an optional keyword argument for the `unit`, which means you can define the unit along with the parameter without explicitly applying a `Unit` object to the parameter. So, you can define unit-ed parameters using something like (as of version 0.3.0)
+```python
+Parameter('k_r', 0.1, unit="1/s")
+```
+instead of doing (earlier versions)
+```python
+Unit(Parameter('k_r', 0.1), '1/s')
+```
+
+The outcome is the same either way, but the top version is a little more compact and easier to read. 
+
+# Accessing all the Units for a model
+
+You can get a list of `Unit` objects defined for a model with the `Model.units` property:
+```python
+from my_model_with_units import model
+print(model.units)
+```
+
+## Additional Examples
+
+Additional examples can be found in or imported from [pysb.units.examples](./src/pysb/units/examples), including 
+
+* [bngwiki_simple](./src/pysb/units/examples/bngwiki_simple.py). - adapted from pysb example [pysb.examples.bngwiki_simple](https://github.com/pysb/pysb/blob/master/pysb/examples/bngwiki_simple.py): 
+ ```python
+ from pysb.units.examples.bngwiki_simple import model
+ ``` 
+ * [jnk3_no_ask1](./src/pysb/units/examples/jnk3_no_ask1.py). - adapted from JARM [jnk3_no_ask1](https://github.com/LoLab-MSM/JARM/blob/master/model_analysis/jnk3_no_ask1.py): 
+ ```python
+ from pysb.units.examples.jnk3_no_ask1 import model
+ ``` 
+
 
 ## Custom Units
 

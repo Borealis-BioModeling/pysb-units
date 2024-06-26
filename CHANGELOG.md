@@ -4,10 +4,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
-## [0.3.0] - 2024-06-25
+## [0.3.0] - 2024-06-26
 
 ### Added
 - New units context manager function `core.units` that allows users to load unit-based functionality and then run checks using context `from pysb.units import units; with units():`. The context manager applies the `unitize` and `check` functions automatically so users don't need to do it manually. 
+- Optional `unit` argument for `Parameter` that allows unit specification when initializing a new model parameter: `Parameter(...,..., unit="...")` which is equivalent to `Unit(Parameter(..,..) "unit"))`.
+- New `examples` sub-package with:
+    - unit-ed version of `bngwiki_simple` model - adpated from `pysb.examples.bngwiki_simple`.
+    - unit-ed version of the `jnk3_no_ask1` model - adpated from the `JARM/model_analysis/jnk3_no_ask1.py` model.
+
+### Fixed
+- Problem converting composite units with molar concentrations to their equivalent with number of molecules and updating the associated parameter. Updated the `ParameterUnit.convert` function to account for this.
+- Problem in the string repr for Parameters with units set to `None`, as well as the processing in ParameterUnit that now skips the conversion related to `SimulationUnits` settings when the input unit is `None`. 
 
 ## [0.2.0] - 2024-06-20
 
