@@ -19,8 +19,13 @@
  4. [Documentation and Usage](#documentation-and-usage)
      1. [Quick Overview](#quick-overview)
      2. [Example](#example)
-     3. [List of macros](#list-of-macros)
-     4. [Preconstructed models](#preconstructed-models)
+     3. [units context manager](#units-context-manager)
+     4. [Using units with pysb.macros](#using-units-with-pysbmacros)
+     5. [Stochastic Simulation Units](#stochastic-simulation-units)
+     6. [unit keyword for Parameter](#unit-keyword-for-parameter)
+     7. [Accessing Model units](#accessing-all-the-units-for-a-model)
+     8. [Additional Examples](#additional-examples)
+     9. [Custom Units](#custom-units)
  5. [Contact](#contact)
  6. [Citing](#citing)  
  7. [Other Useful Tools](#other-useful-tools)
@@ -425,7 +430,7 @@ Unit(Parameter('k_r', 0.1), '1/s')
 
 The outcome is the same either way, but the top version is a little more compact and easier to read. 
 
-# Accessing all the Units for a model
+## Accessing all the Units for a model
 
 You can get a list of `Unit` objects defined for a model with the `Model.units` property:
 ```python
