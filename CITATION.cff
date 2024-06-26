@@ -1,0 +1,10 @@
+cff-version: 1.2.0
+message: "If this software is useful for your work, I'd appreciate if you cited it as below."
+authors:
+- family-names: "Wilson"
+  given-names: "Blake"
+  orcid: "https://orcid.org/0000-0002-8269-2500"
+title: "pysb-units: Add-on for units and dimensional analysis in PySB models."
+version: 0.3.0
+date-released: 2024-06-26
+url: "https://github.com/Borealis-BioModeling/pysb-units"
