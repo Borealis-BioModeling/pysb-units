@@ -469,18 +469,20 @@ Additional examples can be found in or imported from [pysb.units.examples](./src
 
 # Contact
 
-Please open a [GitHub Issue](https://github.com/Borealis-BioModeling/pysb-units/issues) to
-report any problems/bugs or make any comments, suggestions, or feature requests.
+ * **Issues** :bug: : Please open a [GitHub Issue](https://github.com/Borealis-BioModeling/pysb-units/issues) to report any problems/bugs with the code or its execution, or to make any feature requests.
+
+ * **Discussions** :grey_question: : If you have questions, suggestions, or want to discuss anything else related to the project, feel free to use the [pysb-units Discussions](https://github.com/Borealis-BioModeling/pysb-units/discussions) board.
 
 ------
 
-# Citing
+# Supporting
 
-If this package is useful in your work, please cite in any publications:
+I'm very happy that you've chosen to use __pysb-units__. This add-on is a project that I develop and maintain on my own time, independently of the core PySB library, and without external funding. If you've found it helpful, here are a few ways you can support its ongoing development:
 
-```
-Blake A. Wilson. (2024). pysb-units. (v0.3.0). https://github.com/Borealis-BioModeling/pysb-units
-```
+* **Star** :star: : Show your support by starring the [pysb-units GitHub repository](https://github.com/Borealis-BioModeling/pysb-units). It helps increase the project's visibility and lets others know it's useful. It also benefits my motivation to continue improving the package!
+* **Share** :mega: : Sharing `pysb-units` on your social media, forums, or with your network is another great way to support the project. It helps more people discover `pysb-units`, which in turn motivates me to keep developing!
+* **Cite** :books: : Citing or mentioning this software in your work, publications, or projects is another valuable way to support it. It helps spread the word and acknowledges the effort put into its development, which is greatly appreciated!
+* **Sponsor** :dollar: : Even small contributions through my Ko-fi page, [ko-fi.com/blakeaw](https://ko-fi.com/blakeaw), can make a big difference. Every little bit can help me continue developing this and other open-source projects, and I truly appreciate your support!
 
 -----
 
