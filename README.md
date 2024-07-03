@@ -6,7 +6,7 @@
 ![version](https://img.shields.io/badge/version-0.3.0-orange.svg)
 [![release](https://img.shields.io/github/release-pre/Borealis-BioModeling/pysb-units.svg)](https://github.com/Borealis-BioModeling/pysb-units/releases/tag/v0.3.0)
 
-`pysb-units` is an add-on for the [PySB](https://pysb.org/) modeling framework that provides tools to add units to models. 
+**`pysb-units` streamlines unit management and helps ensure unit consistency in PySB models.** 
 
 ## Table of Contents
 
@@ -27,7 +27,7 @@
      8. [Additional Examples](#additional-examples)
      9. [Custom Units](#custom-units)
  5. [Contact](#contact)
- 6. [Citing](#citing)  
+ 6. [Supporting](#supporting)  
  7. [Other Useful Tools](#other-useful-tools)
 
 ------
@@ -97,7 +97,7 @@ See: [CHANGELOG](CHANGELOG.md)
 
 ## Quick Overview
 
-The key features of `pysb-units` are a new `Unit` object derived from pysb annotations, a new `SimulationUnits` object, and drop-in replacements for core model components, including `Model`, `Parameter`, `Expression`, `Rule`, `Initial`, and `Observable` that include new features to help manage units. Additionally, `pysb-units` defines a couple of useful utility functions, including the `unitize` and `check` functions, which make it easier to add units to model and run additional unit checks (such as unit consistency).   
+`pysb-units` is an add-on for the [PySB](https://pysb.org/) modeling framework that provides tools to manage units. The key features of `pysb-units` are a new `Unit` object derived from pysb annotations, a new `SimulationUnits` object, and drop-in replacements for core model components, including `Model`, `Parameter`, `Expression`, `Rule`, `Initial`, and `Observable` that include new features to help manage units. Additionally, `pysb-units` defines a couple of useful utility functions, including the `unitize` and `check` functions, which make it easier to add units to model and run additional unit checks (such as unit consistency).   
 
 __pysb-units__ introduces two new objects for defining and managing units in a pysb model. They are:
 
