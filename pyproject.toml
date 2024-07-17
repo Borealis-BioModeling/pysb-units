@@ -47,7 +47,13 @@ Changelog = "https://github.com/Borealis-BioModeling/pysb-units/blob/master/CHAN
 # Find namespace package
 [tool.setuptools.packages.find]
 where = ["src"]
-include = ["pysb.units"]
+include = ["pysb.units",
+           "pysb.units.core",
+           "pysb.units.unitdefs",
+           "pysb.units.examples",
+           "pysb.units.examples.bngwiki_simple",
+           "pysb.units.examples.jnk3_no_ask1",
+           ]
 namespaces = true
 
 # Set the dynamic version

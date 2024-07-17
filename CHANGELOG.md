@@ -4,6 +4,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [0.4.0] - 2024-07-15
+
+### Added
+- Optional `volume` keyword argumnet to the `core.SimulationUnits` object that allows spcefication of the volume unit to use for autoconversions. This included some additional logic in the `SimulationUnits.__init__` and the `SimulationUnits.convert_units` functions, as well as an update to the `SimulationUnits.__repr__` to account for the volume units. Feature addition for Issue https://github.com/Borealis-BioModeling/pysb-units/issues/7
+
+### Fixed
+- Potential issue with installation of subpackages/modules inside `pysb.units`, which included updated the `include` option in the pyproject.toml file.
+- Issue in the `core.Expression._compose_units` function where it was causing an error if the result of plugging in units gave a `unit_string` that was a unitless ratio (e.g., '1/2').
+
 ## [0.3.0] - 2024-06-26
 
 ### Added

@@ -234,20 +234,34 @@ class Expression(pysb.Expression):
                 if a.has_units:
                     subs.append((a, a.units.expr))
                     subs_uni.append((a, 1))
+                # else:
+                #     subs.append((a, 1))
+                #     subs_uni.append((a, 1))
             elif isinstance(a, Parameter):
                 if a.has_units:
                     subs.append((a, a.units.expr))
                     subs_uni.append((a, 1))
-            elif isinstance(a, pysb.Observable):
+                # else:
+                #     subs.append((a, 1))
+                #     subs_uni.append((a, 1))
+            elif isinstance(a, Observable):
                 if a.has_units:
                     subs.append((a, a.units.expr))
                     subs_uni.append((a, 1))
                 else:
-                    subs_obs.append([a, 1])
+                    subs_obs.append([a, 1])           
         unit_obs_expr = expr.subs(subs)
         unit_expr = unit_obs_expr.subs(subs_obs)
         obs_expr = expr.subs(subs_uni)
         unit_string = repr(unit_expr)
+        try:
+            # Fails if the resulting unit_string
+            # is actually an unitless ratio such as '1/2'.
+            expr_unit = u.Unit(unit_string)
+        except:
+            # In which case, we set the unit_string to "1"
+            # to indicate a unitless quantity.
+            unit_string = "1"
         if len(subs_obs) > 0:
             if isinstance(obs_expr, Observable):
                 obs_string = repr(obs_expr.name)
@@ -543,12 +557,15 @@ class SimulationUnits(object):
             for the frequency unit (1/time).
     """
 
-    def __init__(self, concentration: str = "uM", time: str = "s"):
-        """Initializes the SimulationUnits object with input concentration and time units.
+    def __init__(
+        self, concentration: str = "uM", time: str = "s", volume: str | None = None
+    ):
+        """Initializes the SimulationUnits object with input concentration and time units, and optional volume units.
 
         Args:
             concentration (str, optional): The concentration unit. Defaults to "uM".
             time (str, optional): The time unit. Defaults to "s".
+            volume (str or None, optional): The volume unit. Defaults to None.
 
         Raises:
             UnknownUnitError: If concentration can't be parsed into a recognizable unit.
@@ -574,18 +591,31 @@ class SimulationUnits(object):
         if not (self._time_unit.physical_type == "time"):
             msg = "Time unit pattern '{}' isn't a recognized time pattern.".format(time)
             raise WrongUnitError(msg)
+        if volume is not None:
+            try:
+                self._volume_unit = u.Unit(volume)
+            except:
+                raise UnknownUnitError(
+                    "Unrecognizable volume unit pattern '{}'".format(volume)
+                )
+
         self._concentration = concentration
         self._time = time
         self._frequency_unit = self._time_unit ** (-1)
+        self._volume = volume
         setattr(SelfExporter.default_model, "simulation_units", self)
         self._model = weakref.ref(SelfExporter.default_model)
         return
 
     def __repr__(self) -> str:
-        return "SimulationUnits(concentration='{}', time='{}')".format(
-            self.concentration, self.time
-        )
-
+        if self._volume is None:
+            return "SimulationUnits(concentration='{}', time='{}')".format(
+                self.concentration, self.time
+            )
+        else:
+            return "SimulationUnits(concentration='{}', time='{}', volume='{}')".format(
+                self.concentration, self.time, self.volume,
+            )
     @property
     def time(self) -> str:
         """The time unit as a string."""
@@ -598,9 +628,14 @@ class SimulationUnits(object):
 
     @property
     def frequency(self) -> str:
-        """The frequency (1/time) unit as a string"""
+        """The frequency (1/time) unit as a string."""
         return self._frequency_unit.to_string()
-
+    
+    @property
+    def volume(self) -> str:
+        """The volume unit as a string or None."""
+        return self._volume
+    
     @property
     def time_unit(self) -> u.Unit:
         """The astropy.units.Unit representation of the time unit."""
@@ -616,6 +651,13 @@ class SimulationUnits(object):
         """The astropy.units.Unit representation of the frequency (1/time) unit."""
         return self._frequency_unit
 
+    @property
+    def volume_unit(self) -> u.Unit:
+        """The astropy.units.Unit representation of the volume unit."""
+        if self._volume is not None:
+            return self._volume_unit
+        else:
+            return None
     # def _update_all(self):
     #     for unit in self._model.units:
     #         astro_unit = unit.unit
@@ -647,6 +689,8 @@ class SimulationUnits(object):
                 convert_to *= self.concentration_unit**power
             elif base.physical_type == "time":
                 convert_to *= self.time_unit**power
+            elif (base.physical_type == "volume") and (self._volume is not None):
+                convert_to *= self.volume_unit**power
             else:
                 convert_to *= base**power
         return convert_to
@@ -703,7 +747,9 @@ class ParameterUnit(pysb.Annotation):
             raise UnknownUnitError(
                 "Unrecognizable unit pattern '{}'".format(unit_string)
             )
-        if hasattr(SelfExporter.default_model, "simulation_units") and (unit_string != "1"):
+        if hasattr(SelfExporter.default_model, "simulation_units") and (
+            unit_string != "1"
+        ):
             # Check for complex units that contain time or concentration parts
             convert_unit = SelfExporter.default_model.simulation_units.convert_unit(
                 self._unit
@@ -720,7 +766,7 @@ class ParameterUnit(pysb.Annotation):
     @staticmethod
     def _check_dimensionless(unit_string):
         if unit_string is None:
-            unit_string =  "1"
+            unit_string = "1"
         return unit_string
 
     def convert(self, new_unit: str):
@@ -992,9 +1038,26 @@ def add_macro_units(macro_module):
     Args:
         macro_module (module): The module to which we want add units.
     """
-    macro_module.Rule = Rule
-    macro_module.Parameter = Parameter
-    macro_module.Expression = Expression
+    try:
+        macro_module.Rule = Rule
+    except:
+        pass
+    try:
+        macro_module.Parameter = Parameter
+    except:
+        pass
+    try:
+        macro_module.Expression = Expression
+    except:
+        pass
+    try:
+        macro_module.Observable = Observable
+    except:
+        pass
+    try:
+        macro_module.Initial = Initial
+    except:
+        pass
     return
 
 

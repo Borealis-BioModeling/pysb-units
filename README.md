@@ -4,7 +4,7 @@
 [![PySB version badge](https://img.shields.io/badge/PySB->%3D1.15.0-9cf.svg)](https://pysb.org/)
 [![license](https://img.shields.io/github/license/Borealis-BioModeling/pysb-units.svg)](LICENSE)
 ![version](https://img.shields.io/badge/version-0.3.0-orange.svg)
-[![release](https://img.shields.io/github/release-pre/Borealis-BioModeling/pysb-units.svg)](https://github.com/Borealis-BioModeling/pysb-units/releases/tag/v0.3.0)
+[![release](https://img.shields.io/github/release-pre/Borealis-BioModeling/pysb-units.svg)](https://github.com/Borealis-BioModeling/pysb-units/releases/tag/v0.4.0)
 
 **`pysb-units` streamlines unit management and helps ensure unit consistency in PySB models.** 
 
@@ -56,21 +56,21 @@ You can install `pysb-units` version 0.3.0 with `pip` sourced from the GitHub re
 
 Fresh install:
 ```
-pip install git+https://github.com/Borealis-BioModeling/pysb-units@v0.3.0
+pip install git+https://github.com/Borealis-BioModeling/pysb-units@v0.4.0
 ```
 Or to upgrade from an older version:
 ```
-pip install --upgrade git+https://github.com/Borealis-BioModeling/pysb-units@v0.3.0
+pip install --upgrade git+https://github.com/Borealis-BioModeling/pysb-units@v0.4.0
 ```
 ##### without git installed:
 
 Fresh install:
 ```
-pip install https://github.com/Borealis-BioModeling/pysb-units/archive/refs/tags/v0.3.0.zip
+pip install https://github.com/Borealis-BioModeling/pysb-units/archive/refs/tags/v0.4.0.zip
 ```
 Or to upgrade from an older version:
 ```
-pip install --upgrade https://github.com/Borealis-BioModeling/pysb-units/archive/refs/tags/v0.3.0.zip
+pip install --upgrade https://github.com/Borealis-BioModeling/pysb-units/archive/refs/tags/v0.4.0.zip
 ```
 ### Manual install
 
@@ -482,7 +482,9 @@ I'm very happy that you've chosen to use __pysb-units__. This add-on is a projec
 * **Star** :star: : Show your support by starring the [pysb-units GitHub repository](https://github.com/Borealis-BioModeling/pysb-units). It helps increase the project's visibility and lets others know it's useful. It also benefits my motivation to continue improving the package!
 * **Share** :mega: : Sharing `pysb-units` on your social media, forums, or with your network is another great way to support the project. It helps more people discover `pysb-units`, which in turn motivates me to keep developing!
 * **Cite** :books: : Citing or mentioning this software in your work, publications, or projects is another valuable way to support it. It helps spread the word and acknowledges the effort put into its development, which is greatly appreciated!
-* **Sponsor** :dollar: : Even small contributions through my Ko-fi page, [ko-fi.com/blakeaw](https://ko-fi.com/blakeaw), can make a big difference. Every little bit can help me continue developing this and other open-source projects, and I truly appreciate your support!
+* **Sponsor** :dollar: : Even small financial contributions, such as spotting me the cost of a tea through Ko-fi so I can get my caffeine fix, can make a big difference! Every little bit can help me continue developing this and other open-source projects.
+ 
+[![ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/blakeaw)
 
 -----
 
