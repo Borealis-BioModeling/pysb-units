@@ -3,7 +3,7 @@
 ![Python version badge](https://img.shields.io/badge/python-3.11.3-blue.svg)
 [![PySB version badge](https://img.shields.io/badge/PySB->%3D1.15.0-9cf.svg)](https://pysb.org/)
 [![license](https://img.shields.io/github/license/Borealis-BioModeling/pysb-units.svg)](LICENSE)
-![version](https://img.shields.io/badge/version-0.3.0-orange.svg)
+![version](https://img.shields.io/badge/version-0.4.0-orange.svg)
 [![release](https://img.shields.io/github/release-pre/Borealis-BioModeling/pysb-units.svg)](https://github.com/Borealis-BioModeling/pysb-units/releases/tag/v0.4.0)
 
 **`pysb-units` streamlines unit management and helps ensure unit consistency in PySB models.** 
