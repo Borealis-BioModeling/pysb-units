@@ -3,8 +3,8 @@
 ![Python version badge](https://img.shields.io/badge/python-3.11.3-blue.svg)
 [![PySB version badge](https://img.shields.io/badge/PySB->%3D1.15.0-9cf.svg)](https://pysb.org/)
 [![license](https://img.shields.io/github/license/Borealis-BioModeling/pysb-units.svg)](LICENSE)
-![version](https://img.shields.io/badge/version-0.4.0-orange.svg)
-[![release](https://img.shields.io/github/release-pre/Borealis-BioModeling/pysb-units.svg)](https://github.com/Borealis-BioModeling/pysb-units/releases/tag/v0.4.0)
+![version](https://img.shields.io/badge/version-0.4.1-orange.svg)
+[![release](https://img.shields.io/github/release-pre/Borealis-BioModeling/pysb-units.svg)](https://github.com/Borealis-BioModeling/pysb-units/releases/tag/v0.4.1)
 [![DOI](https://zenodo.org/badge/809880137.svg)](https://zenodo.org/doi/10.5281/zenodo.12786380)
 
 **`pysb-units` streamlines unit management and helps ensure unit consistency in PySB models.** 
@@ -51,28 +51,12 @@ Note that `pysb-units` has the following core dependencies:
 
 ### pip install
 
-You can install `pysb-units` version 0.3.0 with `pip` sourced from the GitHub repo:
+You can install `pysb-units` version 0.4.1 with `pip`:
 
-##### with git installed:
+```sh
+pip install pysb-units
+```
 
-Fresh install:
-```
-pip install git+https://github.com/Borealis-BioModeling/pysb-units@v0.4.0
-```
-Or to upgrade from an older version:
-```
-pip install --upgrade git+https://github.com/Borealis-BioModeling/pysb-units@v0.4.0
-```
-##### without git installed:
-
-Fresh install:
-```
-pip install https://github.com/Borealis-BioModeling/pysb-units/archive/refs/tags/v0.4.0.zip
-```
-Or to upgrade from an older version:
-```
-pip install --upgrade https://github.com/Borealis-BioModeling/pysb-units/archive/refs/tags/v0.4.0.zip
-```
 ### Manual install
 
 First, download the repository. Then from the `pysb-units` folder/directory run
